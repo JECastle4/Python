@@ -6,3 +6,8 @@ HelloWorld
 Julian Date + Day of the Week
 Sun and Moon Position
 Plot Sun and Moon longitude over 12 months
+
+Day 2
+Sun rise and set
+Moon rise and set
+Moon phase
