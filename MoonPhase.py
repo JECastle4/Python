@@ -14,16 +14,27 @@ def moon_phase(time, location=None):
     illum = 0.5 * (1 - np.cos(elongation.rad))
     return illum
 
-def moon_phase_name(time, location=None):
-    """Get textual moon phase name."""
-  
+
+def moon_phase_angle(time, location=None):
+    """Calculate the Moon's phase angle in ecliptic longitude.
+    
+    Parameters
+    ----------
+    time : Time
+        Observation time.
+    location : EarthLocation, optional
+        Observer location (for topocentric correction).
+    
+    Returns
+    -------
+    float
+        Phase angle in degrees (0-360).
+        0-180 = waxing (new → full)
+        180-360 = waning (full → new)
+    """
     sun = get_sun(time)
     moon = get_body("moon", time, location=location) if location is not None else get_body("moon", time)
     
-    # Elongation angle (0 to 180 degrees from separation)
-    elongation_deg = sun.separation(moon).deg
-    
-    # Determine if waxing or waning by checking Sun's position relative to Moon
     # Calculate ecliptic longitudes
     sun_lon = sun.geocentrictrueecliptic.lon.deg
     moon_lon = moon.geocentrictrueecliptic.lon.deg
@@ -31,9 +42,17 @@ def moon_phase_name(time, location=None):
     # Phase angle (0-360, measures Moon ahead of Sun in ecliptic)
     phase_angle = (moon_lon - sun_lon) % 360
     
-    # Illumination
-    illum = 0.5 * (1 - np.cos(np.radians(elongation_deg)))
+    return phase_angle
+
+
+def moon_phase_name(time, location=None):
+    """Get textual moon phase name."""
+    # Get illumination fraction
+    illum = moon_phase(time, location=location)
     illum_pct = illum * 100
+    
+    # Get phase angle to determine waxing vs waning
+    phase_angle = moon_phase_angle(time, location=location)
     
     # Determine phase name
     if phase_angle < 180:  # Waxing
