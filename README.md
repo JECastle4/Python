@@ -11,3 +11,4 @@ Day 2
 Sun rise and set
 Moon rise and set
 Moon phase
+Sun and moon animation
