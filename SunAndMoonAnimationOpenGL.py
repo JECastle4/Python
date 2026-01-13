@@ -10,9 +10,11 @@ from OpenGL.GLU import *
 import numpy as np
 import sys
 import math
+import warnings
 from astropy.time import Time
 from astropy.coordinates import AltAz, get_sun, get_body, EarthLocation
 import astropy.units as u
+from astropy.utils.exceptions import AstropyWarning
 
 from PromptDate import prompt_date
 from PromptLocation import prompt_location
@@ -22,15 +24,19 @@ from MoonPhase import moon_phase, moon_phase_angle, moon_phase_name
 class SkyDomeView:
     """OpenGL-based sky dome visualization"""
     
-    def __init__(self, location, time, width=800, height=800):
+    def __init__(self, location, start_time, end_time, frames_per_day=12, width=800, height=800):
         """Initialize the sky dome view
         
         Parameters
         ----------
         location : EarthLocation
             Observer location
-        time : Time
-            Observation time (UTC)
+        start_time : Time
+            Animation start time (UTC)
+        end_time : Time
+            Animation end time (UTC)
+        frames_per_day : int, optional
+            Number of frames to calculate per day (default: 12)
         width, height : int
             Window dimensions
         """
@@ -41,15 +47,16 @@ class SkyDomeView:
         
         # Observation parameters
         self.location = location
-        self.time = time
+        self.start_time = start_time
+        self.end_time = end_time
+        self.frames_per_day = frames_per_day
         
         # Animation parameters
-        self.n_frames = 288  # 24 hours * 12 frames/hour (5 min intervals)
         self.current_frame = 0
         self.playing = True
         self.animation_speed = 1  # Frames per render cycle
         
-        # Pre-calculate all positions for 24 hours
+        # Pre-calculate all positions for the time range
         self._setup_animation()
         
         # View control
@@ -58,18 +65,24 @@ class SkyDomeView:
         self.zoom = 2.5      # Camera distance
         
     def _setup_animation(self):
-        """Pre-calculate sun and moon positions for 24-hour animation"""
-        import math as pymath
+        """Pre-calculate sun and moon positions for the specified time range"""
+        # Calculate number of days in the time range
+        duration_days = (self.end_time.jd - self.start_time.jd)
         
-        # Start at midnight UTC on the given date
-        midnight_jd = pymath.floor(self.time.jd)
-        self.midnight = Time(midnight_jd, format='jd', scale='utc')
+        # Calculate total number of frames
+        self.n_frames = int(duration_days * self.frames_per_day)
         
-        print(f"\nSetting up 24-hour animation starting at {self.midnight.iso} UTC")
-        print(f"Calculating {self.n_frames} frames (5-minute intervals)...")
+        if self.n_frames < 1:
+            raise ValueError("Time range too short or frames_per_day too low - need at least 1 frame")
         
-        # Create time array for 24 hours
-        self.times = self.midnight + np.linspace(0, 24, self.n_frames) * u.hour
+        print(f"\nSetting up animation from {self.start_time.iso} to {self.end_time.iso} UTC")
+        print(f"Duration: {duration_days:.2f} days")
+        print(f"Frames per day: {self.frames_per_day}")
+        print(f"Total frames: {self.n_frames}")
+        print(f"Calculating positions...")
+        
+        # Create time array for the entire range
+        self.times = self.start_time + np.linspace(0, duration_days, self.n_frames) * u.day
         
         # Pre-calculate all positions
         self.sun_positions = []  # List of (alt, az) tuples
@@ -78,22 +91,32 @@ class SkyDomeView:
         self.moon_phase_angles = []  # List of phase angles
         self.moon_phase_names = []  # List of phase names
         
-        for t in self.times:
-            altaz_frame = AltAz(obstime=t, location=self.location)
+        # Suppress expected coordinate transformation warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyWarning)
             
-            # Sun position
-            sun = get_sun(t).transform_to(altaz_frame)
-            self.sun_positions.append((sun.alt.deg, sun.az.deg))
-            
-            # Moon position
-            moon = get_body('moon', t, location=self.location).transform_to(altaz_frame)
-            self.moon_positions.append((moon.alt.deg, moon.az.deg))
-            
-            # Moon phase
-            self.moon_illuminations.append(moon_phase(t, location=self.location))
-            self.moon_phase_angles.append(moon_phase_angle(t, location=self.location))
-            self.moon_phase_names.append(moon_phase_name(t, location=self.location))
+            for i, t in enumerate(self.times):
+                # Show progress
+                if i % max(1, self.n_frames // 100) == 0 or i == self.n_frames - 1:
+                    percent = (i + 1) / self.n_frames * 100
+                    print(f"\rProgress: {i + 1}/{self.n_frames} ({percent:.1f}%)", end='', flush=True)
+                
+                altaz_frame = AltAz(obstime=t, location=self.location)
+                
+                # Sun position
+                sun = get_sun(t).transform_to(altaz_frame)
+                self.sun_positions.append((sun.alt.deg, sun.az.deg))
+                
+                # Moon position
+                moon = get_body('moon', t, location=self.location).transform_to(altaz_frame)
+                self.moon_positions.append((moon.alt.deg, moon.az.deg))
+                
+                # Moon phase
+                self.moon_illuminations.append(moon_phase(t, location=self.location))
+                self.moon_phase_angles.append(moon_phase_angle(t, location=self.location))
+                self.moon_phase_names.append(moon_phase_name(t, location=self.location))
         
+        print()  # New line after progress
         print(f"Animation setup complete!")
         print(f"Time range: {self.times[0].iso} to {self.times[-1].iso} UTC")
         
@@ -571,13 +594,43 @@ def main():
         print("\nEnter observation parameters:")
         
         location = prompt_location()
-        time = prompt_date()
+        
+        print("\nEnter animation start time:")
+        start_time = prompt_date()
+        
+        print("\nEnter animation end time:")
+        end_time = prompt_date()
+        
+        # Validate time range
+        if end_time.jd <= start_time.jd:
+            print("Error: End time must be after start time")
+            sys.exit(1)
+        
+        # Prompt for frames per day
+        while True:
+            try:
+                frames_input = input("\nFrames per day (default 12, range 1-288): ").strip()
+                if frames_input == "":
+                    frames_per_day = 12
+                    break
+                frames_per_day = int(frames_input)
+                if 1 <= frames_per_day <= 288:
+                    break
+                print("Please enter a value between 1 and 288")
+            except ValueError:
+                print("Please enter a valid integer")
+        
+        duration_days = end_time.jd - start_time.jd
+        total_frames = int(duration_days * frames_per_day)
         
         print(f"\nLocation: Lat={location.lat.deg:.4f}°, Lon={location.lon.deg:.4f}°, Height={location.height.value:.1f}m")
-        print(f"Time: {time.iso} UTC")
+        print(f"Start time: {start_time.iso} UTC")
+        print(f"End time: {end_time.iso} UTC")
+        print(f"Duration: {duration_days:.2f} days")
+        print(f"Total frames: {total_frames}")
         
         # Create and run view
-        view = SkyDomeView(location, time, width=800, height=800)
+        view = SkyDomeView(location, start_time, end_time, frames_per_day, width=800, height=800)
         view.run()
     except Exception as e:
         print(f"Error: {e}")
