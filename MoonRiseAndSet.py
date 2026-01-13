@@ -229,7 +229,7 @@ def moon_target_altitude(location: EarthLocation, time: Time, refraction: u.Quan
     astropy.units.Quantity
         Target altitude = -(refraction + semidiameter), in degrees.
     """
-    moon = get_moon(time, location=location)
+    moon = get_body("moon", time, location=location)
     distance = moon.distance
     semidiam = moon_semidiameter(distance)
     return -(refraction + semidiam)
