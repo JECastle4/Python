@@ -1,34 +1,41 @@
+"""Compute moonrise and moonset times for a given location and date.
+
+This module provides functions to calculate moonrise and moonset times using
+astronomical algorithms and the Astropy library.
+"""
+from typing import List, Tuple, Literal
+
 from astropy.time import Time
 from astropy.coordinates import EarthLocation, AltAz, get_body
 import astropy.units as u
 import numpy as np
-from typing import List, Tuple, Literal
 
 
-def moonrise(location: EarthLocation, julianDate: float, target_altitude: u.Quantity = -0.816 * u.deg, tolerance: u.Quantity = 1 * u.second):
-    """Estimate moonrise time (UTC) for a given EarthLocation and Julian date.
+def _compute_moon_altitudes(
+        midday: Time,
+        location: EarthLocation,
+        target_altitude: u.Quantity):
+    """Compute Moon altitudes over a 24-hour period centered on midday.
 
     Parameters
     ----------
+    midday : Time
+        Reference midday UTC time.
     location : EarthLocation
         Observer location.
-    julianDate : float
-        Any Julian date for the desired date (the function uses the date's noon UTC as a reference).
-    target_altitude : astropy.units.Quantity, optional
-        The geometric altitude to consider "rise" (default -0.833 deg accounts for refraction and Moon radius).
-    tolerance : astropy.units.Quantity, optional
-        Desired accuracy for the returned time (default 1 second).
+    target_altitude : u.Quantity
+        Target altitude for comparison.
 
     Returns
     -------
-    astropy.time.Time or None
-        The estimated UTC Time of moonrise, or ``None`` if the Moon does not rise on that date for the location
-        (e.g., polar day/night).
+    times : Time array
+        Array of times spanning +/- 12 hours from midday.
+    diffs : Quantity array
+        Difference between actual altitude and target altitude at each time.
+    noon_idx : int
+        Index of lunar noon (maximum altitude).
     """
-    # reference midday UTC for the given julianDate
-    midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
-
-    # build a coarse time grid over +/- 12 hours (fine-enough to bracket moonrise)
+    # build a coarse time grid over +/- 12 hours
     hours = np.linspace(-12, 12, 241)  # 0.1 hour steps (~6 minutes)
     times = midday + hours * u.hour
 
@@ -38,23 +45,109 @@ def moonrise(location: EarthLocation, julianDate: float, target_altitude: u.Quan
     altitudes = altaz.alt.to(u.deg)
 
     # target difference
-    diffs = (altitudes - target_altitude.to(u.deg))
+    diffs = altitudes - target_altitude.to(u.deg)
 
-    # find solar noon (time of maximum altitude)
+    # find lunar noon (time of maximum altitude)
     noon_idx = int(np.argmax(altitudes.value))
 
-    # find the first index (from start up to noon) where altitude >= target (morning crossing)
+    return times, diffs, noon_idx
+
+
+def _refine_crossing_time(
+        left: Time,
+        right: Time,
+        location: EarthLocation,
+        target_altitude: u.Quantity,
+        tolerance: u.Quantity,
+        *,
+        ascending: bool = True):
+    """Refine crossing time using bisection method.
+
+    Parameters
+    ----------
+    left : Time
+        Left bound of the interval.
+    right : Time
+        Right bound of the interval.
+    location : EarthLocation
+        Observer location.
+    target_altitude : u.Quantity
+        Target altitude.
+    tolerance : u.Quantity
+        Desired time accuracy.
+    ascending : bool, optional
+        True for moonrise (ascending), False for moonset (descending).
+
+    Returns
+    -------
+    Time
+        Refined crossing time.
+    """
+    tol_days = tolerance.to(u.s).value / 86400.0
+    target_deg = target_altitude.to(u.deg).value
+
+    while (right.jd - left.jd) > tol_days:
+        mid_jd = 0.5 * (left.jd + right.jd)
+        mid = Time(mid_jd, format='jd', scale='utc')
+        mid_val = alt_at(mid, location) - target_deg
+
+        if ascending:
+            # For moonrise: move left if below target, right if above
+            if mid_val < 0:
+                left = mid
+            else:
+                right = mid
+        else:
+            # For moonset: move left if above target, right if below
+            if mid_val > 0:
+                left = mid
+            else:
+                right = mid
+
+    return right
+
+
+def moonrise(
+        location: EarthLocation,
+        julianDate: float,
+        target_altitude: u.Quantity = -0.816 * u.deg,
+        tolerance: u.Quantity = 1 * u.second):
+    """Estimate moonrise time (UTC) for a given EarthLocation and Julian date.
+
+    Parameters
+    ----------
+    location : EarthLocation
+        Observer location.
+    julianDate : float
+        Any Julian date for the desired date (the function uses the
+        date's noon UTC as a reference).
+    target_altitude : astropy.units.Quantity, optional
+        The geometric altitude to consider "rise" (default -0.833 deg
+        accounts for refraction and Moon radius).
+    tolerance : astropy.units.Quantity, optional
+        Desired accuracy for the returned time (default 1 second).
+
+    Returns
+    -------
+    astropy.time.Time or None
+        The estimated UTC Time of moonrise, or ``None`` if the Moon does
+        not rise on that date for the location (e.g., polar day/night).
+    """
+    # reference midday UTC for the given julianDate
+    midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
+
+    # compute altitudes over the day
+    times, diffs, noon_idx = _compute_moon_altitudes(
+        midday, location, target_altitude)
+
+    # find the first index (from start up to noon) where altitude >= target
+    # (morning crossing)
     morning_zone = diffs[: noon_idx + 1]
     nonneg = np.where(morning_zone >= 0)[0]
     if nonneg.size == 0:
-        # no crossing before noon: moon either always above (polar day) or always below (polar night)
-        # NOTE: This condition is theoretically unreachable with current logic because morning_zone
-        # always contains at least one element (index 0), so nonneg.size is never 0 when moon is
-        # circumpolar. Kept as defensive programming. The actual circumpolar case is handled at line 77.
-        if np.all(diffs > 0):
-            return None
-        else:
-            return None
+        # no crossing before noon: moon either always above (polar day) or
+        # always below (polar night)
+        return None if np.all(diffs > 0) else None
 
     idx = int(nonneg[0])
     if idx == 0:
@@ -64,15 +157,10 @@ def moonrise(location: EarthLocation, julianDate: float, target_altitude: u.Quan
         left = times[idx - 1]
         right = times[idx]
 
-
+    # Defensive check: ensure we have a proper crossing
     left_val = alt_at(left, location) - target_altitude.to(u.deg).value
-    # right_val = alt_at(right, location) - target_altitude.to(u.deg).value
-
-    # ensure we have a sign change (left <= 0 <= right)
     if left_val > 0:
-        # Defensive check: With 241 grid points (~6 min spacing), this condition rarely triggers.
-        # It guards against coarse grid missing the crossing or moon already being circumpolar.
-        # attempt to step left until sign change or exhausted
+        # Step left to find sign change
         j = idx - 1
         while j >= 0 and left_val > 0:
             left = times[j]
@@ -81,72 +169,54 @@ def moonrise(location: EarthLocation, julianDate: float, target_altitude: u.Quan
         if left_val > 0:
             return None  # Circumpolar: moon stays above target all day
 
-    # bisection refinement
-    tol_days = tolerance.to(u.s).value / 86400.0
-    while (right.jd - left.jd) > tol_days:
-        mid_jd = 0.5 * (left.jd + right.jd)
-        mid = Time(mid_jd, format='jd', scale='utc')
-        mid_val = alt_at(mid, location) - target_altitude.to(u.deg).value
-        if mid_val < 0:
-            left = mid
-        else:
-            right = mid
+    # refine the crossing time
+    return _refine_crossing_time(
+        left, right, location, target_altitude, tolerance, ascending=True)
 
-    # return the first time the altitude reaches/exceeds target (right bound)
-    return right
-
-def moonset(location: EarthLocation, julianDate: float, target_altitude: u.Quantity = -0.833 * u.deg, tolerance: u.Quantity = 1 * u.second):
+def moonset(
+        location: EarthLocation,
+        julianDate: float,
+        target_altitude: u.Quantity = -0.833 * u.deg,
+        tolerance: u.Quantity = 1 * u.second):
     """Estimate moonset time (UTC) for a given EarthLocation and Julian date.
 
-    This searches *after* solar noon for the time the Moon descends through the `target_altitude`.
+    This searches *after* solar noon for the time the Moon descends
+    through the `target_altitude`.
 
     Parameters
     ----------
     location : EarthLocation
         Observer location.
     julianDate : float
-        Any Julian date for the desired date (the function uses the date's noon UTC as a reference).
+        Any Julian date for the desired date (the function uses the
+        date's noon UTC as a reference).
     target_altitude : astropy.units.Quantity, optional
-        The geometric altitude to consider "set" (default -0.833 deg accounts for refraction and Moon radius).
+        The geometric altitude to consider "set" (default -0.833 deg
+        accounts for refraction and Moon radius).
     tolerance : astropy.units.Quantity, optional
         Desired accuracy for the returned time (default 1 second).
 
     Returns
     -------
     astropy.time.Time or None
-        The estimated UTC Time of moonset, or ``None`` if the Moon does not set on that date for the location
-        (e.g., polar day/night).
+        The estimated UTC Time of moonset, or ``None`` if the Moon does
+        not set on that date for the location (e.g., polar day/night).
     """
     # reference midday UTC for the given julianDate
     midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
 
-    # build a coarse time grid over +/- 12 hours (fine-enough to bracket moonset)
-    hours = np.linspace(-12, 12, 241)  # 0.1 hour steps (~6 minutes)
-    times = midday + hours * u.hour
+    # compute altitudes over the day
+    times, diffs, noon_idx = _compute_moon_altitudes(
+        midday, location, target_altitude)
 
-    # vectorized altitude computation
-    mooncoords = get_body("moon", times)
-    altaz = mooncoords.transform_to(AltAz(obstime=times, location=location))
-    altitudes = altaz.alt.to(u.deg)
-
-    # target difference
-    diffs = (altitudes - target_altitude.to(u.deg))
-
-    # find solar noon (time of maximum altitude)
-    noon_idx = int(np.argmax(altitudes.value))
-
-    # look for the first time after (or at) noon where altitude goes below or equal to target
+    # look for the first time after (or at) noon where altitude goes
+    # below or equal to target
     evening_zone = diffs[noon_idx:]
     leq = np.where(evening_zone <= 0)[0]
     if leq.size == 0:
-        # no crossing after noon: moon either always above (polar day) or always below (polar night)
-        # NOTE: Similar to moonrise, the condition 'if np.all(diffs > 0)' distinguishes between
-        # circumpolar (always above) vs never rises (always below), but both return None.
-        # Defensive programming for edge cases.
-        if np.all(diffs > 0):
-            return None
-        else:
-            return None
+        # no crossing after noon: moon either always above (polar day) or
+        # always below (polar night)
+        return None if np.all(diffs > 0) else None
 
     rel_idx = int(leq[0])
     if rel_idx == 0:
@@ -157,49 +227,54 @@ def moonset(location: EarthLocation, julianDate: float, target_altitude: u.Quant
     left = times[abs_idx - 1]
     right = times[abs_idx]
 
+    # Defensive checks: ensure we have a proper crossing
     left_val = alt_at(left, location) - target_altitude.to(u.deg).value
     right_val = alt_at(right, location) - target_altitude.to(u.deg).value
+    target_deg = target_altitude.to(u.deg).value
 
-    # ensure we have a sign change (left >= 0 >= right)
-    # Defensive checks: With 241 grid points, these conditions rarely trigger.
-    # They guard against edge cases where the coarse grid misses the actual crossing.
     if left_val < 0:
-        # attempt to step left until sign change or exhausted
+        # Step left to find sign change
         j = abs_idx - 2
-        while j >= 0 and left_val < 0:
+        while j >= 0 and left_val < 0:  # pylint: disable=chained-comparison
             left = times[j]
-            left_val = alt_at(left) - target_altitude.to(u.deg).value
+            left_val = alt_at(left, location) - target_deg
             j -= 1
         if left_val < 0:
             return None  # Moon never rises above target
 
     if right_val > 0:
-        # attempt to step right until sign change or exhausted
+        # Step right to find sign change
         j = abs_idx + 1
         while j < len(times) and right_val > 0:
             right = times[j]
-            right_val = alt_at(right, location) - target_altitude.to(u.deg).value
+            right_val = alt_at(right, location) - target_deg
             j += 1
         if right_val > 0:
             return None  # Moon stays above target (circumpolar)
 
-    # bisection refinement (left positive, right negative)
-    tol_days = tolerance.to(u.s).value / 86400.0
-    while (right.jd - left.jd) > tol_days:
-        mid_jd = 0.5 * (left.jd + right.jd)
-        mid = Time(mid_jd, format='jd', scale='utc')
-        mid_val = alt_at(mid, location) - target_altitude.to(u.deg).value
-        if mid_val > 0:
-            left = mid
-        else:
-            right = mid
+    # refine the crossing time
+    return _refine_crossing_time(
+        left, right, location, target_altitude, tolerance, ascending=False)
 
-    # return the first time the altitude drops to/below target (right bound)
-    return right
-    
-# helper to compute altitude at a scalar Time
+
 def alt_at(t: Time, location) -> float:
-    return get_body("moon", t).transform_to(AltAz(obstime=t, location=location)).alt.to(u.deg).value
+    """Compute Moon altitude at a scalar Time for a given location.
+
+    Parameters
+    ----------
+    t : Time
+        The time at which to compute the altitude.
+    location : EarthLocation
+        Observer location.
+
+    Returns
+    -------
+    float
+        Moon altitude in degrees.
+    """
+    moon_altaz = get_body("moon", t).transform_to(
+        AltAz(obstime=t, location=location))
+    return moon_altaz.alt.to(u.deg).value
 
 
 def moon_semidiameter(moon_distance: u.Quantity) -> u.Quantity:
@@ -215,12 +290,16 @@ def moon_semidiameter(moon_distance: u.Quantity) -> u.Quantity:
     astropy.units.Quantity
         Angular semidiameter in degrees.
     """
-    R_moon = 1737.4 * u.km  # Moon's mean radius
-    semidiameter_rad = np.arcsin((R_moon / moon_distance).to(u.dimensionless_unscaled).value)
+    r_moon = 1737.4 * u.km  # Moon's mean radius
+    semidiameter_rad = np.arcsin(
+        (r_moon / moon_distance).to(u.dimensionless_unscaled).value)
     return (semidiameter_rad * u.rad).to(u.deg)
 
 
-def moon_target_altitude(location: EarthLocation, time: Time, refraction: u.Quantity = 0.566 * u.deg) -> u.Quantity:
+def moon_target_altitude(
+        location: EarthLocation,
+        time: Time,
+        refraction: u.Quantity = 0.566 * u.deg) -> u.Quantity:
     """Compute a recommended target altitude for moonrise/moonset at a given time.
 
     Combines atmospheric refraction and the Moon's instantaneous semidiameter.
@@ -311,7 +390,6 @@ def find_altitude_crossings(
     for idx in sign_changes:
         left = times[idx]
         right = times[idx + 1]
-        left_val = diffs[idx]
         right_val = diffs[idx + 1]
 
         # Bisection refinement
@@ -321,7 +399,6 @@ def find_altitude_crossings(
             mid_val = alt_at_time(mid) - target_val
             if mid_val < 0:
                 left = mid
-                left_val = mid_val
             else:
                 right = mid
                 right_val = mid_val
@@ -352,8 +429,9 @@ def moon_rise_set(
 ) -> List[Tuple[Time, Literal['rise', 'set']]]:
     """Find all moonrise and moonset events for a given date and location.
 
-    Searches a 24-hour window starting at local midnight (approximated as 00:00 UTC on the given date).
-    Uses topocentric Moon positions to account for parallax.
+    Searches a 24-hour window starting at local midnight (approximated as
+    00:00 UTC on the given date). Uses topocentric Moon positions to
+    account for parallax.
 
     Parameters
     ----------

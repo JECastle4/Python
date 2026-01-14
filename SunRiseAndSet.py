@@ -1,33 +1,39 @@
+"""Compute sunrise and sunset times for a given location and date.
+
+This module provides functions to calculate sunrise and sunset times using
+astronomical algorithms and the Astropy library.
+"""
 from astropy.time import Time
 from astropy.coordinates import EarthLocation, AltAz, get_sun
 import astropy.units as u
 import numpy as np
 
 
-def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quantity = -0.833 * u.deg, tolerance: u.Quantity = 1 * u.second):
-    """Estimate sunrise time (UTC) for a given EarthLocation and Julian date.
+def _compute_sun_altitudes(
+        midday: Time,
+        location: EarthLocation,
+        target_altitude: u.Quantity):
+    """Compute Sun altitudes over a 24-hour period centered on midday.
 
     Parameters
     ----------
+    midday : Time
+        Reference midday UTC time.
     location : EarthLocation
         Observer location.
-    julianDate : float
-        Any Julian date for the desired date (the function uses the date's noon UTC as a reference).
-    target_altitude : astropy.units.Quantity, optional
-        The geometric altitude to consider "rise" (default -0.833 deg accounts for refraction and Sun radius).
-    tolerance : astropy.units.Quantity, optional
-        Desired accuracy for the returned time (default 1 second).
+    target_altitude : u.Quantity
+        Target altitude for comparison.
 
     Returns
     -------
-    astropy.time.Time or None
-        The estimated UTC Time of sunrise, or ``None`` if the Sun does not rise on that date for the location
-        (e.g., polar day/night).
+    times : Time array
+        Array of times spanning +/- 12 hours from midday.
+    diffs : Quantity array
+        Difference between actual altitude and target altitude at each time.
+    noon_idx : int
+        Index of solar noon (maximum altitude).
     """
-    # reference midday UTC for the given julianDate
-    midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
-
-    # build a coarse time grid over +/- 12 hours (fine-enough to bracket sunrise)
+    # build a coarse time grid over +/- 12 hours
     hours = np.linspace(-12, 12, 241)  # 0.1 hour steps (~6 minutes)
     times = midday + hours * u.hour
 
@@ -37,23 +43,109 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
     altitudes = altaz.alt.to(u.deg)
 
     # target difference
-    diffs = (altitudes - target_altitude.to(u.deg))
+    diffs = altitudes - target_altitude.to(u.deg)
 
     # find solar noon (time of maximum altitude)
     noon_idx = int(np.argmax(altitudes.value))
 
-    # find the first index (from start up to noon) where altitude >= target (morning crossing)
+    return times, diffs, noon_idx
+
+
+def _refine_crossing_time(
+        left: Time,
+        right: Time,
+        location: EarthLocation,
+        target_altitude: u.Quantity,
+        tolerance: u.Quantity,
+        *,
+        ascending: bool = True):
+    """Refine crossing time using bisection method.
+
+    Parameters
+    ----------
+    left : Time
+        Left bound of the interval.
+    right : Time
+        Right bound of the interval.
+    location : EarthLocation
+        Observer location.
+    target_altitude : u.Quantity
+        Target altitude.
+    tolerance : u.Quantity
+        Desired time accuracy.
+    ascending : bool, optional
+        True for sunrise (ascending), False for sunset (descending).
+
+    Returns
+    -------
+    Time
+        Refined crossing time.
+    """
+    tol_days = tolerance.to(u.s).value / 86400.0
+    target_deg = target_altitude.to(u.deg).value
+
+    while (right.jd - left.jd) > tol_days:
+        mid_jd = 0.5 * (left.jd + right.jd)
+        mid = Time(mid_jd, format='jd', scale='utc')
+        mid_val = alt_at(mid, location) - target_deg
+
+        if ascending:
+            # For sunrise: move left if below target, right if above
+            if mid_val < 0:
+                left = mid
+            else:
+                right = mid
+        else:
+            # For sunset: move left if above target, right if below
+            if mid_val > 0:
+                left = mid
+            else:
+                right = mid
+
+    return right
+
+
+def sunrise(
+        location: EarthLocation,
+        julianDate: float,
+        target_altitude: u.Quantity = -0.833 * u.deg,
+        tolerance: u.Quantity = 1 * u.second):
+    """Estimate sunrise time (UTC) for a given EarthLocation and Julian date.
+
+    Parameters
+    ----------
+    location : EarthLocation
+        Observer location.
+    julianDate : float
+        Any Julian date for the desired date (the function uses the date's
+        noon UTC as a reference).
+    target_altitude : astropy.units.Quantity, optional
+        The geometric altitude to consider "rise" (default -0.833 deg
+        accounts for refraction and Sun radius).
+    tolerance : astropy.units.Quantity, optional
+        Desired accuracy for the returned time (default 1 second).
+
+    Returns
+    -------
+    astropy.time.Time or None
+        The estimated UTC Time of sunrise, or ``None`` if the Sun does not
+        rise on that date for the location (e.g., polar day/night).
+    """
+    # reference midday UTC for the given julianDate
+    midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
+
+    # compute altitudes over the day
+    times, diffs, noon_idx = _compute_sun_altitudes(
+        midday, location, target_altitude)
+
+    # find the first index (from start up to noon) where altitude >= target
+    # (morning crossing)
     morning_zone = diffs[: noon_idx + 1]
     nonneg = np.where(morning_zone >= 0)[0]
     if nonneg.size == 0:
-        # no crossing before noon: sun either always above (polar day) or always below (polar night)
-        # NOTE: This condition is theoretically unreachable with current logic because morning_zone
-        # always contains at least one element (index 0), so nonneg.size is never 0 when sun is
-        # circumpolar. Kept as defensive programming. The actual circumpolar case is handled at line 77.
-        if np.all(diffs > 0):
-            return None
-        else:
-            return None
+        # no crossing before noon: sun either always above (polar day) or
+        # always below (polar night)
+        return None if np.all(diffs > 0) else None
 
     idx = int(nonneg[0])
     if idx == 0:
@@ -63,15 +155,10 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
         left = times[idx - 1]
         right = times[idx]
 
-
+    # Defensive check: ensure we have a proper crossing
     left_val = alt_at(left, location) - target_altitude.to(u.deg).value
-    # right_val = alt_at(right, location) - target_altitude.to(u.deg).value
-
-    # ensure we have a sign change (left <= 0 <= right)
     if left_val > 0:
-        # Defensive check: With 241 grid points (~6 min spacing), this condition rarely triggers.
-        # It guards against coarse grid missing the crossing or sun already being circumpolar.
-        # attempt to step left until sign change or exhausted
+        # Step left to find sign change
         j = idx - 1
         while j >= 0 and left_val > 0:
             left = times[j]
@@ -80,72 +167,55 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
         if left_val > 0:
             return None  # Circumpolar: sun stays above target all day
 
-    # bisection refinement
-    tol_days = tolerance.to(u.s).value / 86400.0
-    while (right.jd - left.jd) > tol_days:
-        mid_jd = 0.5 * (left.jd + right.jd)
-        mid = Time(mid_jd, format='jd', scale='utc')
-        mid_val = alt_at(mid, location) - target_altitude.to(u.deg).value
-        if mid_val < 0:
-            left = mid
-        else:
-            right = mid
+    # refine the crossing time
+    return _refine_crossing_time(
+        left, right, location, target_altitude, tolerance, ascending=True)
 
-    # return the first time the altitude reaches/exceeds target (right bound)
-    return right
 
-def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quantity = -0.833 * u.deg, tolerance: u.Quantity = 1 * u.second):
+def sunset(
+        location: EarthLocation,
+        julianDate: float,
+        target_altitude: u.Quantity = -0.833 * u.deg,
+        tolerance: u.Quantity = 1 * u.second):
     """Estimate sunset time (UTC) for a given EarthLocation and Julian date.
 
-    This searches *after* solar noon for the time the Sun descends through the `target_altitude`.
+    This searches *after* solar noon for the time the Sun descends through
+    the `target_altitude`.
 
     Parameters
     ----------
     location : EarthLocation
         Observer location.
     julianDate : float
-        Any Julian date for the desired date (the function uses the date's noon UTC as a reference).
+        Any Julian date for the desired date (the function uses the date's
+        noon UTC as a reference).
     target_altitude : astropy.units.Quantity, optional
-        The geometric altitude to consider "set" (default -0.833 deg accounts for refraction and Sun radius).
+        The geometric altitude to consider "set" (default -0.833 deg
+        accounts for refraction and Sun radius).
     tolerance : astropy.units.Quantity, optional
         Desired accuracy for the returned time (default 1 second).
 
     Returns
     -------
     astropy.time.Time or None
-        The estimated UTC Time of sunset, or ``None`` if the Sun does not set on that date for the location
-        (e.g., polar day/night).
+        The estimated UTC Time of sunset, or ``None`` if the Sun does not
+        set on that date for the location (e.g., polar day/night).
     """
     # reference midday UTC for the given julianDate
     midday = Time(julianDate, format='jd', scale='utc') + 0.5 * u.day
 
-    # build a coarse time grid over +/- 12 hours (fine-enough to bracket sunset)
-    hours = np.linspace(-12, 12, 241)  # 0.1 hour steps (~6 minutes)
-    times = midday + hours * u.hour
+    # compute altitudes over the day
+    times, diffs, noon_idx = _compute_sun_altitudes(
+        midday, location, target_altitude)
 
-    # vectorized altitude computation
-    suncoords = get_sun(times)
-    altaz = suncoords.transform_to(AltAz(obstime=times, location=location))
-    altitudes = altaz.alt.to(u.deg)
-
-    # target difference
-    diffs = (altitudes - target_altitude.to(u.deg))
-
-    # find solar noon (time of maximum altitude)
-    noon_idx = int(np.argmax(altitudes.value))
-
-    # look for the first time after (or at) noon where altitude goes below or equal to target
+    # look for the first time after (or at) noon where altitude goes
+    # below or equal to target
     evening_zone = diffs[noon_idx:]
     leq = np.where(evening_zone <= 0)[0]
     if leq.size == 0:
-        # no crossing after noon: sun either always above (polar day) or always below (polar night)
-        # NOTE: Similar to sunrise, the condition 'if np.all(diffs > 0)' distinguishes between
-        # circumpolar (always above) vs never rises (always below), but both return None.
-        # Defensive programming for edge cases.
-        if np.all(diffs > 0):
-            return None
-        else:
-            return None
+        # no crossing after noon: sun either always above (polar day) or
+        # always below (polar night)
+        return None if np.all(diffs > 0) else None
 
     rel_idx = int(leq[0])
     if rel_idx == 0:
@@ -156,46 +226,51 @@ def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quanti
     left = times[abs_idx - 1]
     right = times[abs_idx]
 
+    # Defensive checks: ensure we have a proper crossing
     left_val = alt_at(left, location) - target_altitude.to(u.deg).value
     right_val = alt_at(right, location) - target_altitude.to(u.deg).value
+    target_deg = target_altitude.to(u.deg).value
 
-    # ensure we have a sign change (left >= 0 >= right)
-    # Defensive checks: With 241 grid points, these conditions rarely trigger.
-    # They guard against edge cases where the coarse grid misses the actual crossing.
     if left_val < 0:
-        # attempt to step left until sign change or exhausted
+        # Step left to find sign change
         j = abs_idx - 2
-        while j >= 0 and left_val < 0:
+        while j >= 0 and left_val < 0:  # pylint: disable=chained-comparison
             left = times[j]
-            left_val = alt_at(left) - target_altitude.to(u.deg).value
+            left_val = alt_at(left, location) - target_deg
             j -= 1
         if left_val < 0:
             return None  # Sun never rises above target
 
     if right_val > 0:
-        # attempt to step right until sign change or exhausted
+        # Step right to find sign change
         j = abs_idx + 1
         while j < len(times) and right_val > 0:
             right = times[j]
-            right_val = alt_at(right, location) - target_altitude.to(u.deg).value
+            right_val = alt_at(right, location) - target_deg
             j += 1
         if right_val > 0:
             return None  # Sun stays above target (circumpolar)
 
-    # bisection refinement (left positive, right negative)
-    tol_days = tolerance.to(u.s).value / 86400.0
-    while (right.jd - left.jd) > tol_days:
-        mid_jd = 0.5 * (left.jd + right.jd)
-        mid = Time(mid_jd, format='jd', scale='utc')
-        mid_val = alt_at(mid, location) - target_altitude.to(u.deg).value
-        if mid_val > 0:
-            left = mid
-        else:
-            right = mid
+    # refine the crossing time
+    return _refine_crossing_time(
+        left, right, location, target_altitude, tolerance, ascending=False)
 
-    # return the first time the altitude drops to/below target (right bound)
-    return right
-    
-# helper to compute altitude at a scalar Time
+
 def alt_at(t: Time, location) -> float:
-    return get_sun(t).transform_to(AltAz(obstime=t, location=location)).alt.to(u.deg).value
+    """Compute Sun altitude at a scalar Time for a given location.
+
+    Parameters
+    ----------
+    t : Time
+        The time at which to compute the altitude.
+    location : EarthLocation
+        Observer location.
+
+    Returns
+    -------
+    float
+        Sun altitude in degrees.
+    """
+    sun_altaz = get_sun(t).transform_to(
+        AltAz(obstime=t, location=location))
+    return sun_altaz.alt.to(u.deg).value
