@@ -47,6 +47,7 @@ class SolarSystemView:
         self.playing = True
         self.animation_speed = 1
         self.trail_length = 10000  # Number of past positions to show (full year at hourly intervals)
+        self.gap_frames = 50  # Number of frames to clear around Earth/Moon for visibility
         
         # Use built-in ephemeris for faster calculations
         solar_system_ephemeris.set('builtin')
@@ -57,9 +58,9 @@ class SolarSystemView:
         self.zoom = 2.0       # Camera distance (closer view)
         
         # Size scale factors (exaggerated for visibility)
-        self.sun_size = 0.1      # Relative size
-        self.earth_size = 0.01   # Relative size (reduced)
-        self.moon_size = 0.008   # Relative size (reduced)
+        self.sun_size = 0.023      # Relative size (5x magnification)
+        self.earth_size = 0.00125  # Halved again - approaching realistic proportions
+        self.moon_size = 0.001     # Halved again - approaching realistic proportions
         
         # Moon orbit scale (true scale = 1.0)
         self.moon_orbit_scale = 1.0
@@ -194,8 +195,23 @@ class SolarSystemView:
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         
-        # Disable lighting (using flat colors)
+        # Disable all lighting (using vertex colors only)
         glDisable(GL_LIGHTING)
+        glDisable(GL_LIGHT0)
+        glDisable(GL_LIGHT1)
+        glDisable(GL_LIGHT2)
+        glDisable(GL_LIGHT3)
+        glDisable(GL_LIGHT4)
+        glDisable(GL_LIGHT5)
+        glDisable(GL_LIGHT6)
+        glDisable(GL_LIGHT7)
+        glDisable(GL_COLOR_MATERIAL)
+        
+        # Disable back-face culling (draw all triangles regardless of orientation)
+        glDisable(GL_CULL_FACE)
+        
+        # Use smooth shading (with lighting off, uniform vertex colors = uniform surface)
+        glShadeModel(GL_SMOOTH)
         
         # Set up perspective
         glMatrixMode(GL_PROJECTION)
@@ -236,6 +252,18 @@ class SolarSystemView:
                     # Step forward
                     self.current_frame = (self.current_frame + 1) % self.n_frames
                     print(f"Frame {self.current_frame + 1}/{self.n_frames}")
+                elif event.key == pygame.K_1:
+                    # Zoom preset 1: Wide view
+                    self.zoom = 2.0
+                    print("Zoom: Wide view (2.0 AU)")
+                elif event.key == pygame.K_2:
+                    # Zoom preset 2: Medium view
+                    self.zoom = 1.0
+                    print("Zoom: Medium view (1.0 AU)")
+                elif event.key == pygame.K_3:
+                    # Zoom preset 3: Close view
+                    self.zoom = 0.4
+                    print("Zoom: Close view (0.4 AU)")
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:  # Mouse wheel up
                     self.zoom = max(1.0, self.zoom - 0.2)
@@ -259,23 +287,34 @@ class SolarSystemView:
             self.current_frame = (self.current_frame + self.animation_speed) % self.n_frames
             
     def draw_sphere(self, radius, slices=32, stacks=32):
-        """Draw a sphere using GLU"""
-        quadric = gluNewQuadric()
-        gluQuadricNormals(quadric, GLU_SMOOTH)
-        gluSphere(quadric, radius, slices, stacks)
-        gluDeleteQuadric(quadric)
+        """Draw a sphere using triangle strips - no lighting, pure color"""
+        for i in range(stacks):
+            lat0 = math.pi * (-0.5 + float(i) / stacks)
+            z0 = radius * math.sin(lat0)
+            zr0 = radius * math.cos(lat0)
+            
+            lat1 = math.pi * (-0.5 + float(i + 1) / stacks)
+            z1 = radius * math.sin(lat1)
+            zr1 = radius * math.cos(lat1)
+            
+            glBegin(GL_TRIANGLE_STRIP)
+            for j in range(slices + 1):
+                lng = 2 * math.pi * float(j) / slices
+                x = math.cos(lng)
+                y = math.sin(lng)
+                
+                # Don't set normals, just vertices with current color
+                glVertex3f(x * zr0, y * zr0, z0)
+                glVertex3f(x * zr1, y * zr1, z1)
+            glEnd()
         
     def draw_sun(self):
         """Draw the Sun at the origin"""
         glPushMatrix()
         
-        # Draw glow
-        glColor4f(1.0, 1.0, 0.0, 0.3)
-        self.draw_sphere(self.sun_size * 2.0)
-        
-        # Draw Sun
+        # Draw Sun only (no glow for now to debug)
         glColor3f(1.0, 1.0, 0.0)
-        self.draw_sphere(self.sun_size)
+        self.draw_sphere(self.sun_size, slices=64, stacks=64)
         
         glPopMatrix()
         
@@ -306,14 +345,18 @@ class SolarSystemView:
         if self.current_frame < 2:
             return  # Need at least 2 frames
             
-        # Calculate trail range
+        # Calculate trail range (stop before gap_frames to clear space around Earth)
         start_frame = max(0, self.current_frame - self.trail_length)
+        end_frame = max(0, self.current_frame - self.gap_frames)
+        
+        if end_frame <= start_frame:
+            return  # No trail to draw
         
         glLineWidth(1.5)
         glBegin(GL_LINE_STRIP)
         
         # Draw trail with fading transparency
-        for i in range(start_frame, self.current_frame + 1):
+        for i in range(start_frame, end_frame + 1):
             # Calculate alpha based on age (newer = more opaque)
             age = self.current_frame - i
             alpha = 1.0 - (age / self.trail_length)
@@ -329,14 +372,18 @@ class SolarSystemView:
         if self.current_frame < 2:
             return  # Need at least 2 frames
             
-        # Calculate trail range
+        # Calculate trail range (stop before gap_frames to clear space around Moon)
         start_frame = max(0, self.current_frame - self.trail_length)
+        end_frame = max(0, self.current_frame - self.gap_frames)
+        
+        if end_frame <= start_frame:
+            return  # No trail to draw
         
         glLineWidth(1.0)
         glBegin(GL_LINE_STRIP)
         
         # Draw trail with fading transparency
-        for i in range(start_frame, self.current_frame + 1):
+        for i in range(start_frame, end_frame + 1):
             # Calculate alpha based on age (newer = more opaque)
             age = self.current_frame - i
             alpha = 1.0 - (age / self.trail_length)
@@ -347,6 +394,85 @@ class SolarSystemView:
         
         glEnd()
         
+    def draw_earth_orbit(self):
+        """Draw the complete orbital path of Earth with gap around current position"""
+        if len(self.earth_positions) < 2:
+            return
+        
+        # Calculate gap boundaries
+        gap_start = max(0, self.current_frame - self.gap_frames)
+        gap_end = min(len(self.earth_positions) - 1, self.current_frame + self.gap_frames)
+        
+        glLineWidth(1.0)
+        glColor4f(0.2, 0.5, 1.0, 0.3)  # Blue with transparency
+        
+        # Draw segment before gap
+        if gap_start > 0:
+            glBegin(GL_LINE_STRIP)
+            for i in range(0, gap_start + 1):
+                x, y, z = self.earth_positions[i]
+                glVertex3f(x, y, z)
+            glEnd()
+        
+        # Draw segment after gap
+        if gap_end < len(self.earth_positions) - 1:
+            glBegin(GL_LINE_STRIP)
+            for i in range(gap_end, len(self.earth_positions)):
+                x, y, z = self.earth_positions[i]
+                glVertex3f(x, y, z)
+            glEnd()
+        
+    def draw_moon_orbit(self):
+        """Draw the complete orbital path of Moon with gap around current position"""
+        if len(self.moon_positions) < 2:
+            return
+        
+        # Calculate gap boundaries
+        gap_start = max(0, self.current_frame - self.gap_frames)
+        gap_end = min(len(self.moon_positions) - 1, self.current_frame + self.gap_frames)
+        
+        glLineWidth(0.8)
+        glColor4f(0.8, 0.8, 0.8, 0.25)  # Gray with transparency
+        
+        # Draw segment before gap
+        if gap_start > 0:
+            glBegin(GL_LINE_STRIP)
+            for i in range(0, gap_start + 1):
+                x, y, z = self.moon_positions[i]
+                glVertex3f(x, y, z)
+            glEnd()
+        
+        # Draw segment after gap
+        if gap_end < len(self.moon_positions) - 1:
+            glBegin(GL_LINE_STRIP)
+            for i in range(gap_end, len(self.moon_positions)):
+                x, y, z = self.moon_positions[i]
+                glVertex3f(x, y, z)
+            glEnd()
+        
+    def draw_3d_label(self, text, x, y, z, color=(1.0, 1.0, 1.0)):
+        """Draw a text label in 3D space"""
+        if not hasattr(self, 'label_font'):
+            self.label_font = pygame.font.SysFont('Arial', 14)
+        
+        # Render text to surface
+        text_surface = self.label_font.render(text, True, (int(color[0]*255), int(color[1]*255), int(color[2]*255)))
+        text_data = pygame.image.tostring(text_surface, "RGBA", True)
+        
+        glPushMatrix()
+        glTranslatef(x, y, z)
+        
+        # Billboard effect - make text face camera
+        glRotatef(-self.rotation_z, 0, 0, 1)
+        glRotatef(-self.rotation_x, 1, 0, 0)
+        
+        # Position text
+        glRasterPos3f(0, 0, 0)
+        glDrawPixels(text_surface.get_width(), text_surface.get_height(),
+                    GL_RGBA, GL_UNSIGNED_BYTE, text_data)
+        
+        glPopMatrix()
+    
     def draw_coordinate_axes(self):
         """Draw coordinate axes for reference"""
         glLineWidth(2.0)
@@ -452,6 +578,10 @@ class SolarSystemView:
         # Draw coordinate axes (optional, for debugging)
         # self.draw_coordinate_axes()
         
+        # Draw orbital paths first (background)
+        self.draw_earth_orbit()
+        self.draw_moon_orbit()
+        
         # Draw celestial objects
         self.draw_earth_trail()
         self.draw_moon_trail()
@@ -473,6 +603,7 @@ class SolarSystemView:
         print("\nControls:")
         print("  Mouse drag: Rotate view")
         print("  Mouse wheel: Zoom in/out")
+        print("  1/2/3: Zoom presets (Wide/Medium/Close)")
         print("  SPACE: Play/Pause")
         print("  UP/DOWN: Speed up/slow down")
         print("  LEFT/RIGHT: Step backward/forward")
