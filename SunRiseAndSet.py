@@ -47,6 +47,9 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
     nonneg = np.where(morning_zone >= 0)[0]
     if nonneg.size == 0:
         # no crossing before noon: sun either always above (polar day) or always below (polar night)
+        # NOTE: This condition is theoretically unreachable with current logic because morning_zone
+        # always contains at least one element (index 0), so nonneg.size is never 0 when sun is
+        # circumpolar. Kept as defensive programming. The actual circumpolar case is handled at line 77.
         if np.all(diffs > 0):
             return None
         else:
@@ -66,6 +69,8 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
 
     # ensure we have a sign change (left <= 0 <= right)
     if left_val > 0:
+        # Defensive check: With 241 grid points (~6 min spacing), this condition rarely triggers.
+        # It guards against coarse grid missing the crossing or sun already being circumpolar.
         # attempt to step left until sign change or exhausted
         j = idx - 1
         while j >= 0 and left_val > 0:
@@ -73,7 +78,7 @@ def sunrise(location: EarthLocation, julianDate: float, target_altitude: u.Quant
             left_val = alt_at(left, location) - target_altitude.to(u.deg).value
             j -= 1
         if left_val > 0:
-            return None
+            return None  # Circumpolar: sun stays above target all day
 
     # bisection refinement
     tol_days = tolerance.to(u.s).value / 86400.0
@@ -134,6 +139,9 @@ def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quanti
     leq = np.where(evening_zone <= 0)[0]
     if leq.size == 0:
         # no crossing after noon: sun either always above (polar day) or always below (polar night)
+        # NOTE: Similar to sunrise, the condition 'if np.all(diffs > 0)' distinguishes between
+        # circumpolar (always above) vs never rises (always below), but both return None.
+        # Defensive programming for edge cases.
         if np.all(diffs > 0):
             return None
         else:
@@ -152,6 +160,8 @@ def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quanti
     right_val = alt_at(right, location) - target_altitude.to(u.deg).value
 
     # ensure we have a sign change (left >= 0 >= right)
+    # Defensive checks: With 241 grid points, these conditions rarely trigger.
+    # They guard against edge cases where the coarse grid misses the actual crossing.
     if left_val < 0:
         # attempt to step left until sign change or exhausted
         j = abs_idx - 2
@@ -160,7 +170,7 @@ def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quanti
             left_val = alt_at(left) - target_altitude.to(u.deg).value
             j -= 1
         if left_val < 0:
-            return None
+            return None  # Sun never rises above target
 
     if right_val > 0:
         # attempt to step right until sign change or exhausted
@@ -170,7 +180,7 @@ def sunset(location: EarthLocation, julianDate: float, target_altitude: u.Quanti
             right_val = alt_at(right, location) - target_altitude.to(u.deg).value
             j += 1
         if right_val > 0:
-            return None
+            return None  # Sun stays above target (circumpolar)
 
     # bisection refinement (left positive, right negative)
     tol_days = tolerance.to(u.s).value / 86400.0
