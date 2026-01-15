@@ -35,7 +35,7 @@ jobs:
     
     - name: Run tests with coverage
       run: |
-        pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+        PYTHONPATH=. pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
     
     - name: Security scan - Bandit
       run: |
