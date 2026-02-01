@@ -1,0 +1,12 @@
+astropy
+numpy
+matplotlib
+PyOpenGL
+PyOpenGL-accelerate
+fastapi
+uvicorn[standard]
+
+[dev]
+pytest
+pytest-cov
+httpx

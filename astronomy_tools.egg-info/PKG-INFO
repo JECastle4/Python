@@ -1,0 +1,33 @@
+Metadata-Version: 2.4
+Name: astronomy-tools
+Version: 0.1.0
+Summary: Astronomy calculation tools and API
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: astropy
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Requires-Dist: PyOpenGL
+Requires-Dist: PyOpenGL-accelerate
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: httpx; extra == "dev"
+
+# Python
+John's python code - probably astronomy related
+
+Day 1
+HelloWorld
+Julian Date + Day of the Week
+Sun and Moon Position
+Plot Sun and Moon longitude over 12 months
+
+Day 2
+Sun rise and set
+Moon rise and set
+Moon phase
+Sun and moon animation
+# Test commit to verify branch protection

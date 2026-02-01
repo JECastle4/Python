@@ -3,11 +3,8 @@ Date and time calculation services
 """
 from astropy.time import Time
 from datetime import datetime
-import sys
-import os
 
-# Add parent directory to path to import from root modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Import from root module - works when package is installed
 from DayOfTheWeek import jd_to_weekday
 
 
