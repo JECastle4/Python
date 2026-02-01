@@ -1,0 +1,52 @@
+"""
+Date and time calculation services
+"""
+from astropy.time import Time
+from datetime import datetime
+
+# Import from root module - works when package is installed
+from DayOfTheWeek import jd_to_weekday
+
+
+# Day names mapping
+DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+
+def calculate_day_of_week(date_str: str, time_str: str = "00:00:00") -> dict:
+    """
+    Calculate the day of the week from a given date and time.
+    
+    Args:
+        date_str: Date in ISO format (YYYY-MM-DD)
+        time_str: Time in HH:MM:SS format (defaults to 00:00:00)
+    
+    Returns:
+        Dictionary containing:
+            - julian_date: The JD as a float
+            - day_of_week: Integer 0-6 (0=Sunday)
+            - day_name: Name of the day
+            - input_datetime: The processed input string
+    
+    Raises:
+        ValueError: If date/time format is invalid
+    """
+    # Combine date and time
+    datetime_str = f"{date_str} {time_str}"
+    
+    # Parse the datetime
+    dt = datetime.fromisoformat(datetime_str)
+    
+    # Convert to Julian Date using astropy
+    t = Time(dt, format='datetime', scale='utc')
+    jd = t.jd
+    
+    # Calculate day of week
+    day_index = jd_to_weekday(jd)
+    day_name = DAY_NAMES[day_index]
+    
+    return {
+        "julian_date": jd,
+        "day_of_week": day_index,
+        "day_name": day_name,
+        "input_datetime": datetime_str
+    }
