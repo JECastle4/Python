@@ -152,6 +152,166 @@ class TestDayOfWeekEndpoint:
         assert abs((jd2 - jd1) - 0.5) < 0.01
 
 
+class TestMoonPhaseEndpoint:
+    """Test cases for /api/v1/moon-phase endpoint"""
+    
+    def test_moon_phase_basic(self):
+        """Test basic moon phase request"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 10.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert "illumination" in data
+        assert "phase_angle" in data
+        assert "phase_name" in data
+        assert "julian_date" in data
+        assert "location" in data
+        assert "input_datetime" in data
+        
+        assert isinstance(data["illumination"], float)
+        assert isinstance(data["phase_angle"], float)
+        assert isinstance(data["phase_name"], str)
+        
+        assert 0.0 <= data["illumination"] <= 1.0
+        assert 0.0 <= data["phase_angle"] < 360.0
+    
+    def test_moon_phase_new_moon(self):
+        """Test moon phase near new moon"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-29",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["illumination"] < 0.1
+        assert "New Moon" in data["phase_name"]
+    
+    def test_moon_phase_full_moon(self):
+        """Test moon phase near full moon"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-13",
+                "time": "22:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["illumination"] > 0.9
+        assert "Full Moon" in data["phase_name"]
+    
+    def test_moon_phase_default_elevation(self):
+        """Test moon phase with default elevation"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["elevation"] == 0.0
+    
+    def test_moon_phase_invalid_date(self):
+        """Test moon phase with invalid date"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "invalid-date",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 400
+    
+    def test_moon_phase_invalid_latitude(self):
+        """Test moon phase with invalid latitude"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 100.0,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_moon_phase_invalid_longitude(self):
+        """Test moon phase with invalid longitude"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": 200.0,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_moon_phase_name_values(self):
+        """Test that phase name is valid"""
+        response = client.post(
+            "/api/v1/moon-phase",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        valid_names = [
+            "New Moon",
+            "Waxing Crescent",
+            "First Quarter",
+            "Waxing Gibbous",
+            "Full Moon",
+            "Waning Gibbous",
+            "Last Quarter",
+            "Waning Crescent",
+        ]
+        
+        assert data["phase_name"] in valid_names
+
+
 class TestHealthEndpoints:
     """Test health check and root endpoints"""
     

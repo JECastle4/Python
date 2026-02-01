@@ -1,0 +1,103 @@
+"""Moon phase calculation service."""
+
+from astropy.time import Time
+from astropy.coordinates import get_sun, get_body, EarthLocation
+import astropy.units as u
+import numpy as np
+
+
+def calculate_moon_phase(
+    date_str: str,
+    time_str: str,
+    latitude: float,
+    longitude: float,
+    elevation: float = 0.0,
+) -> dict:
+    """
+    Calculate the moon's phase information including illumination, phase angle, and name.
+
+    Phase calculation requires both sun and moon positions to determine the
+    elongation angle (angular separation) and ecliptic longitude difference.
+
+    Args:
+        date_str: Date in ISO format (YYYY-MM-DD)
+        time_str: Time in ISO format (HH:MM:SS)
+        latitude: Latitude in degrees (-90 to 90)
+        longitude: Longitude in degrees (-180 to 180)
+        elevation: Elevation in meters (default: 0.0)
+
+    Returns:
+        dict: Dictionary containing:
+            - illumination: Fraction of moon illuminated (0.0 to 1.0)
+            - phase_angle: Moon's phase angle in ecliptic longitude (0 to 360 degrees)
+            - phase_name: Textual name of the phase (e.g., "Waxing Crescent")
+            - julian_date: Julian Date of the observation
+            - location: Dict with latitude, longitude, elevation
+            - input_datetime: Original input datetime string
+    """
+    # Combine date and time
+    datetime_str = f"{date_str}T{time_str}"
+
+    # Convert to astropy Time (assumes UTC)
+    time = Time(datetime_str, format="isot", scale="utc")
+
+    # Create location
+    location = EarthLocation(
+        lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m
+    )
+
+    # Get sun and moon positions
+    sun = get_sun(time)
+    moon = get_body("moon", time, location=location)
+
+    # Calculate illumination fraction from elongation angle
+    # Elongation is the angular separation between sun and moon as seen from Earth
+    # elongation=0° → new moon (illum=0), elongation=180° → full moon (illum=1)
+    elongation = sun.separation(moon)
+    illumination = float(0.5 * (1 - np.cos(elongation.rad)))
+
+    # Calculate phase angle from ecliptic longitudes
+    # This tells us where the moon is relative to the sun in the ecliptic plane
+    # 0-180° = waxing (new → full), 180-360° = waning (full → new)
+    sun_lon = sun.geocentrictrueecliptic.lon.deg
+    moon_lon = moon.geocentrictrueecliptic.lon.deg
+    phase_angle = float((moon_lon - sun_lon) % 360)
+
+    # Determine phase name based on illumination and whether waxing/waning
+    illum_pct = illumination * 100
+
+    if phase_angle < 180:  # Waxing
+        if illum_pct < 3:
+            phase_name = "New Moon"
+        elif illum_pct < 47:
+            phase_name = "Waxing Crescent"
+        elif illum_pct < 53:
+            phase_name = "First Quarter"
+        elif illum_pct < 97:
+            phase_name = "Waxing Gibbous"
+        else:
+            phase_name = "Full Moon"
+    else:  # Waning
+        if illum_pct > 97:
+            phase_name = "Full Moon"
+        elif illum_pct > 53:
+            phase_name = "Waning Gibbous"
+        elif illum_pct > 47:
+            phase_name = "Last Quarter"
+        elif illum_pct > 3:
+            phase_name = "Waning Crescent"
+        else:
+            phase_name = "New Moon"
+
+    return {
+        "illumination": illumination,
+        "phase_angle": phase_angle,
+        "phase_name": phase_name,
+        "julian_date": float(time.jd),
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
+            "elevation": elevation,
+        },
+        "input_datetime": datetime_str,
+    }

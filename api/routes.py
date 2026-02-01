@@ -9,10 +9,13 @@ from api.models import (
     SunPositionResponse,
     MoonPositionRequest,
     MoonPositionResponse,
+    MoonPhaseRequest,
+    MoonPhaseResponse,
 )
 from api.services.dates import calculate_day_of_week
 from api.services.sun import calculate_sun_position
 from api.services.moon import calculate_moon_position
+from api.services.moon_phase import calculate_moon_phase
 
 router = APIRouter()
 
@@ -135,4 +138,51 @@ async def get_moon_position(request: MoonPositionRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error calculating moon position: {str(e)}"
+        )
+
+
+@router.post("/moon-phase", response_model=MoonPhaseResponse)
+async def get_moon_phase(request: MoonPhaseRequest):
+    """
+    Calculate the moon's phase information at a given time and location.
+    
+    Returns illumination fraction (0=new, 1=full), phase angle in ecliptic
+    longitude (0-180°=waxing, 180-360°=waning), and textual phase name.
+    
+    Note: Phase calculation requires both sun and moon positions to determine
+    the angular separation and ecliptic longitude difference.
+    
+    - **date**: Date in ISO format (YYYY-MM-DD)
+    - **time**: Time in HH:MM:SS format
+    - **latitude**: Latitude in degrees (-90 to 90)
+    - **longitude**: Longitude in degrees (-180 to 180)
+    - **elevation**: Elevation above sea level in meters (optional)
+    
+    Returns:
+    - **illumination**: Fraction illuminated (0.0 to 1.0)
+    - **phase_angle**: Angle in ecliptic (0-360°)
+    - **phase_name**: E.g., "Waxing Crescent", "Full Moon"
+    - **julian_date**: JD for this calculation
+    - **input_datetime**: The processed input
+    - **location**: The location used for calculation
+    """
+    try:
+        result = calculate_moon_phase(
+            request.date,
+            request.time,
+            request.latitude,
+            request.longitude,
+            request.elevation
+        )
+        return MoonPhaseResponse(**result)
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid input: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error calculating moon phase: {str(e)}"
         )

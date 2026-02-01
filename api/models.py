@@ -161,6 +161,72 @@ class MoonPositionResponse(BaseModel):
     )
 
 
+class MoonPhaseRequest(BaseModel):
+    """Request model for moon phase calculation"""
+    date: str = Field(
+        ..., 
+        description="Date in ISO format (YYYY-MM-DD)",
+        examples=["2026-02-01"]
+    )
+    time: str = Field(
+        ...,
+        description="Time in HH:MM:SS format",
+        examples=["12:30:45"]
+    )
+    latitude: float = Field(
+        ...,
+        ge=-90,
+        le=90,
+        description="Latitude in degrees (-90 to 90, negative=South)",
+        examples=[40.7128]
+    )
+    longitude: float = Field(
+        ...,
+        ge=-180,
+        le=180,
+        description="Longitude in degrees (-180 to 180, negative=West)",
+        examples=[-74.0060]
+    )
+    elevation: float = Field(
+        default=0.0,
+        description="Elevation above sea level in meters",
+        examples=[10.0]
+    )
+
+
+class MoonPhaseResponse(BaseModel):
+    """Response model for moon phase calculation"""
+    illumination: float = Field(
+        ...,
+        description="Fraction of moon illuminated (0.0=new moon, 1.0=full moon)",
+        ge=0.0,
+        le=1.0
+    )
+    phase_angle: float = Field(
+        ...,
+        description="Moon's phase angle in ecliptic longitude (0-180=waxing, 180-360=waning)",
+        ge=0.0,
+        lt=360.0
+    )
+    phase_name: str = Field(
+        ...,
+        description="Textual name of the moon phase",
+        examples=["Waxing Crescent", "Full Moon", "Waning Gibbous"]
+    )
+    julian_date: float = Field(
+        ...,
+        description="Julian Date (JD) for this calculation"
+    )
+    input_datetime: str = Field(
+        ...,
+        description="The input date and time that was processed"
+    )
+    location: LocationModel = Field(
+        ...,
+        description="The location used for the calculation"
+    )
+
+
 class DayOfWeekResponse(BaseModel):
     """Response model for day of week calculation"""
     julian_date: float = Field(
