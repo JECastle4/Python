@@ -313,3 +313,154 @@ class TestSunPositionEndpoint:
         data = response.json()
         assert data["is_visible"] is False
         assert data["altitude"] < 0
+
+
+class TestMoonPositionEndpoint:
+    """Test cases for /api/v1/moon-position endpoint"""
+    
+    def test_moon_position_basic(self):
+        """Test basic moon position request"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "20:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 10.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert "altitude" in data
+        assert "azimuth" in data
+        assert "is_visible" in data
+        assert "julian_date" in data
+        assert "location" in data
+        assert "input_datetime" in data
+        
+        assert isinstance(data["altitude"], float)
+        assert isinstance(data["azimuth"], float)
+        assert isinstance(data["is_visible"], bool)
+        
+        assert -90 <= data["altitude"] <= 90
+        assert 0 <= data["azimuth"] <= 360
+    
+    def test_moon_position_default_elevation(self):
+        """Test moon position with default elevation"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["elevation"] == 0.0
+    
+    def test_moon_position_southern_hemisphere(self):
+        """Test moon position for southern hemisphere"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": -33.8688,
+                "longitude": 151.2093,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["latitude"] == -33.8688
+        assert data["location"]["longitude"] == 151.2093
+    
+    def test_moon_position_visibility(self):
+        """Test that moon visibility matches altitude"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        if data["altitude"] > 0:
+            assert data["is_visible"] is True
+        else:
+            assert data["is_visible"] is False
+    
+    def test_moon_position_invalid_date(self):
+        """Test moon position with invalid date"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "invalid-date",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 400
+    
+    def test_moon_position_invalid_latitude(self):
+        """Test moon position with invalid latitude"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 100.0,
+                "longitude": -74.0060,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_moon_position_invalid_longitude(self):
+        """Test moon position with invalid longitude"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": 200.0,
+                "elevation": 0.0
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_moon_position_extreme_elevation(self):
+        """Test moon position with Mt. Everest elevation"""
+        response = client.post(
+            "/api/v1/moon-position",
+            json={
+                "date": "2025-01-15",
+                "time": "12:00:00",
+                "latitude": 27.9881,
+                "longitude": 86.9250,
+                "elevation": 8848.86
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["elevation"] == 8848.86
