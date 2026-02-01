@@ -11,11 +11,14 @@ from api.models import (
     MoonPositionResponse,
     MoonPhaseRequest,
     MoonPhaseResponse,
+    BatchEarthObservationsRequest,
+    BatchEarthObservationsResponse,
 )
 from api.services.dates import calculate_day_of_week
 from api.services.sun import calculate_sun_position
 from api.services.moon import calculate_moon_position
 from api.services.moon_phase import calculate_moon_phase
+from api.services.batch_earth_observations import calculate_batch_earth_observations
 
 router = APIRouter()
 
@@ -185,4 +188,50 @@ async def get_moon_phase(request: MoonPhaseRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error calculating moon phase: {str(e)}"
+        )
+
+
+@router.post(
+    "/batch-earth-observations",
+    response_model=BatchEarthObservationsResponse,
+    tags=["batch"],
+    summary="Get batch celestial observations from Earth",
+    description="""
+    Calculate multiple frames of sun and moon positions and moon phase from an Earth location.
+    
+    This endpoint generates a series of observations between start and end times,
+    perfect for animations or time-series visualizations. Each frame contains:
+    - Sun position (altitude, azimuth, visibility)
+    - Moon position (altitude, azimuth, visibility)
+    - Moon phase (illumination, angle, name)
+    
+    **Note:** For large frame counts, this may take several seconds to compute.
+    Current implementation calls position services for each frame.
+    """
+)
+async def get_batch_earth_observations(request: BatchEarthObservationsRequest):
+    """Calculate batch observations of celestial positions from Earth"""
+    try:
+        result = calculate_batch_earth_observations(
+            start_date=request.start_date,
+            start_time=request.start_time,
+            end_date=request.end_date,
+            end_time=request.end_time,
+            frame_count=request.frame_count,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            elevation=request.elevation
+        )
+        
+        return BatchEarthObservationsResponse(**result)
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid input: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error calculating batch observations: {str(e)}"
         )

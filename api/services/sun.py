@@ -60,6 +60,32 @@ def calculate_sun_position(
     # Get sun position and transform to AltAz coordinates
     sun_altaz = get_sun(t).transform_to(altaz_frame)
     
+    return _process_sun_position(sun_altaz, t, datetime_str, latitude, longitude, elevation)
+
+
+def _process_sun_position(
+    sun_altaz,
+    time: Time,
+    datetime_str: str,
+    latitude: float,
+    longitude: float,
+    elevation: float
+) -> dict:
+    """
+    Process sun position data into response format.
+    Internal function used by calculate_sun_position and batch operations.
+    
+    Args:
+        sun_altaz: Sun position in AltAz frame
+        time: Astropy Time object
+        datetime_str: Input datetime string
+        latitude: Latitude in degrees
+        longitude: Longitude in degrees
+        elevation: Elevation in meters
+    
+    Returns:
+        Dictionary with sun position data
+    """
     # Extract altitude and azimuth
     altitude = sun_altaz.alt.degree
     azimuth = sun_altaz.az.degree
@@ -72,7 +98,7 @@ def calculate_sun_position(
         "altitude": float(altitude),
         "azimuth": float(azimuth),
         "is_visible": is_visible,
-        "julian_date": float(t.jd),
+        "julian_date": float(time.jd),
         "input_datetime": datetime_str,
         "location": {
             "latitude": latitude,

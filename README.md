@@ -13,3 +13,16 @@ Moon rise and set
 Moon phase
 Sun and moon animation
 # Test commit to verify branch protection
+
+Phase 1
+Building to two Open GL animations:
+SunAndMoonAnimation - Earth bound
+SolarSystemAnimation - Sun centered
+
+1/2/2026
+Initial API layer
+- Dates
+- Sun position
+- Moon position
+- Moon phase
+Enough for 1 frame on the Earth bound animation.
