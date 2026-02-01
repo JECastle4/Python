@@ -55,7 +55,8 @@ def calculate_moon_position(
     moon = get_body("moon", time, location)
 
     # Convert to AltAz frame for the given location and time
-    altaz_frame = AltAz(obstime=time, location=location)
+    # (pressure=0 to ignore atmospheric refraction for simplicity)
+    altaz_frame = AltAz(obstime=time, location=location, pressure=0.0)
     moon_altaz = moon.transform_to(altaz_frame)
 
     # Extract altitude and azimuth

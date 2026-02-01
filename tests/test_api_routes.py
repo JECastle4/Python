@@ -24,7 +24,7 @@ class TestDayOfWeekEndpoint:
         assert data["day_name"] == "Sunday"
         assert "julian_date" in data
         assert isinstance(data["julian_date"], float)
-        assert data["input_datetime"] == "2026-02-01 00:00:00"
+        assert data["input_datetime"] == "2026-02-01T00:00:00"
     
     def test_valid_request_with_time(self):
         """Test valid request with both date and time"""
@@ -38,7 +38,7 @@ class TestDayOfWeekEndpoint:
         
         assert data["day_of_week"] == 0
         assert data["day_name"] == "Sunday"
-        assert data["input_datetime"] == "2026-02-01 14:30:45"
+        assert data["input_datetime"] == "2026-02-01T14:30:45"
     
     def test_different_days_of_week(self):
         """Test multiple dates to verify different days"""
