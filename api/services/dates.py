@@ -2,7 +2,6 @@
 Date and time calculation services
 """
 from astropy.time import Time
-from datetime import datetime
 
 # Import from root module - works when package is installed
 from DayOfTheWeek import jd_to_weekday
@@ -30,14 +29,11 @@ def calculate_day_of_week(date_str: str, time_str: str = "00:00:00") -> dict:
     Raises:
         ValueError: If date/time format is invalid
     """
-    # Combine date and time
-    datetime_str = f"{date_str} {time_str}"
-    
-    # Parse the datetime
-    dt = datetime.fromisoformat(datetime_str)
+    # Combine date and time (ISO 8601 format)
+    datetime_str = f"{date_str}T{time_str}"
     
     # Convert to Julian Date using astropy
-    t = Time(dt, format='datetime', scale='utc')
+    t = Time(datetime_str, format='isot', scale='utc')
     jd = t.jd
     
     # Calculate day of week
