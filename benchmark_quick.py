@@ -1,8 +1,11 @@
 """Quick benchmark for batch earth observations API."""
+import os
 import requests
 import time
 
-API_URL = "http://localhost:8002/api/v1/batch-earth-observations"
+# Use environment variable or default to localhost:8000
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_URL = f"{API_BASE_URL}/api/v1/batch-earth-observations"
 
 def benchmark(name, frame_count, start_date, end_date):
     """Run a single benchmark test."""
@@ -18,7 +21,7 @@ def benchmark(name, frame_count, start_date, end_date):
     }
     
     start = time.perf_counter()
-    response = requests.post(API_URL, json=payload)
+    response = requests.post(API_URL, json=payload, timeout=30)
     elapsed = time.perf_counter() - start
     
     if response.status_code == 200:
@@ -36,9 +39,11 @@ def benchmark(name, frame_count, start_date, end_date):
 
 # Check server
 try:
-    requests.get("http://localhost:8002/")
-except:
-    print("ERROR: Server not running on port 8002")
+    requests.get(f"{API_BASE_URL}/", timeout=5)
+except Exception as e:
+    print(f"ERROR: Server not running at {API_BASE_URL}")
+    print(f"Please start the server with: uvicorn api.main:app --reload")
+    print(f"Or set API_BASE_URL environment variable to point to your server")
     exit(1)
 
 print("=" * 80)
@@ -46,6 +51,9 @@ print("BATCH API BENCHMARK - Optimized Version")
 print("=" * 80)
 print()
 
+# Note: These dates are hardcoded for consistent benchmark results.
+# The API handles any date (past, present, or future) for astronomical calculations,
+# so these dates will remain valid test data regardless of when tests are run.
 tests = [
     ("24 frames (1 day hourly)", 24, "2026-02-01", "2026-02-01"),
     ("48 frames (2 days hourly)", 48, "2026-02-01", "2026-02-02"),

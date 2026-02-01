@@ -18,6 +18,7 @@ from api.services.dates import calculate_day_of_week
 from api.services.sun import calculate_sun_position
 from api.services.moon import calculate_moon_position
 from api.services.moon_phase import calculate_moon_phase
+from api.services.batch_earth_observations import calculate_batch_earth_observations
 
 router = APIRouter()
 
@@ -208,11 +209,9 @@ async def get_moon_phase(request: MoonPhaseRequest):
     Current implementation calls position services for each frame.
     """
 )
-def get_batch_earth_observations(request: BatchEarthObservationsRequest):
+async def get_batch_earth_observations(request: BatchEarthObservationsRequest):
     """Calculate batch observations of celestial positions from Earth"""
     try:
-        from api.services.batch_earth_observations import calculate_batch_earth_observations
-        
         result = calculate_batch_earth_observations(
             start_date=request.start_date,
             start_time=request.start_time,

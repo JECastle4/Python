@@ -2,11 +2,13 @@
 Benchmark script for the batch earth observations API.
 Tests performance with various time spans and frame counts.
 """
+import os
 import requests
 import time
-from datetime import datetime, timedelta
 
-API_URL = "http://localhost:8001/api/v1/batch-earth-observations"
+# Use environment variable or default to localhost:8000
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_URL = f"{API_BASE_URL}/api/v1/batch-earth-observations"
 
 def benchmark_batch_request(start_date, start_time, end_date, end_time, frame_count, latitude, longitude, elevation=0.0):
     """
@@ -28,7 +30,7 @@ def benchmark_batch_request(start_date, start_time, end_date, end_time, frame_co
     
     start = time.perf_counter()
     try:
-        response = requests.post(API_URL, json=payload)
+        response = requests.post(API_URL, json=payload, timeout=30)
         elapsed = time.perf_counter() - start
         
         if response.status_code == 200:
@@ -51,6 +53,9 @@ def run_benchmarks():
     # Test location: London
     lat, lon = 52.0, 0.0
     
+    # Note: These dates are hardcoded for consistent benchmark results.
+    # The API handles any date (past, present, or future) for astronomical calculations,
+    # so these dates will remain valid test data regardless of when tests are run.
     test_cases = [
         {
             "name": "1 day, hourly (24 frames)",
@@ -180,12 +185,13 @@ def run_benchmarks():
 if __name__ == "__main__":
     # Check if server is running
     try:
-        response = requests.get("http://localhost:8001/")
-        print(f"Server is running: {response.json()}")
+        response = requests.get(f"{API_BASE_URL}/", timeout=5)
+        print(f"Server is running at {API_BASE_URL}: {response.json()}")
         print()
     except Exception as e:
-        print(f"ERROR: Server not running at http://localhost:8001")
-        print(f"Please start the server with: uvicorn api.main:app --reload --port 8001")
+        print(f"ERROR: Server not running at {API_BASE_URL}")
+        print(f"Please start the server with: uvicorn api.main:app --reload")
+        print(f"Or set API_BASE_URL environment variable to point to your server")
         exit(1)
     
     run_benchmarks()

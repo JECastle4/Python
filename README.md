@@ -16,7 +16,7 @@ Sun and moon animation
 
 Phase 1
 Building to two Open GL animations:
-SunAndMoonAninmation - Earth bound
+SunAndMoonAnimation - Earth bound
 SolarSystemAnimation - Sun centered
 
 1/2/2026
@@ -25,4 +25,4 @@ Initial API layer
 - Sun position
 - Moon position
 - Moon phase
-Enought for 1 frame on the Earth bound animation.
+Enough for 1 frame on the Earth bound animation.
