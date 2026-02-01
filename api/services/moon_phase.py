@@ -1,7 +1,9 @@
 """Moon phase calculation service."""
 
+import warnings
 from astropy.time import Time
 from astropy.coordinates import get_sun, get_body, EarthLocation
+from astropy.coordinates.baseframe import NonRotationTransformationWarning
 import astropy.units as u
 import numpy as np
 
@@ -59,18 +61,51 @@ def calculate_moon_phase(
     sun = get_sun(time)
     moon = get_body("moon", time, location=location)
 
-    # Calculate illumination fraction from elongation angle
-    # Elongation is the angular separation between sun and moon as seen from Earth
-    # elongation=0° → new moon (illum=0), elongation=180° → full moon (illum=1)
-    elongation = sun.separation(moon)
-    illumination = float(0.5 * (1 - np.cos(elongation.rad)))
+    return _process_moon_phase(sun, moon, time, datetime_str, latitude, longitude, elevation)
 
-    # Calculate phase angle from ecliptic longitudes
-    # This tells us where the moon is relative to the sun in the ecliptic plane
-    # 0-180° = waxing (new → full), 180-360° = waning (full → new)
-    sun_lon = sun.geocentrictrueecliptic.lon.deg
-    moon_lon = moon.geocentrictrueecliptic.lon.deg
-    phase_angle = float((moon_lon - sun_lon) % 360)
+
+def _process_moon_phase(
+    sun,
+    moon,
+    time: Time,
+    datetime_str: str,
+    latitude: float,
+    longitude: float,
+    elevation: float
+) -> dict:
+    """
+    Process moon phase data from sun and moon positions.
+    Internal function used by calculate_moon_phase and batch operations.
+    
+    Args:
+        sun: Sun position (GCRS coordinates)
+        moon: Moon position (GCRS coordinates)
+        time: Astropy Time object
+        datetime_str: Input datetime string
+        latitude: Latitude in degrees
+        longitude: Longitude in degrees
+        elevation: Elevation in meters
+    
+    Returns:
+        Dictionary with moon phase data
+    """
+    # Suppress the NonRotationTransformationWarning during coordinate transformations
+    # This warning is informational and doesn't affect moon phase calculation accuracy
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", NonRotationTransformationWarning)
+        
+        # Calculate illumination fraction from elongation angle
+        # Elongation is the angular separation between sun and moon as seen from Earth
+        # elongation=0° → new moon (illum=0), elongation=180° → full moon (illum=1)
+        elongation = sun.separation(moon)
+        illumination = float(0.5 * (1 - np.cos(elongation.rad)))
+
+        # Calculate phase angle from ecliptic longitudes
+        # This tells us where the moon is relative to the sun in the ecliptic plane
+        # 0-180° = waxing (new → full), 180-360° = waning (full → new)
+        sun_lon = sun.geocentrictrueecliptic.lon.deg
+        moon_lon = moon.geocentrictrueecliptic.lon.deg
+        phase_angle = float((moon_lon - sun_lon) % 360)
 
     # Determine phase name based on illumination and whether waxing/waning
     illum_pct = illumination * 100

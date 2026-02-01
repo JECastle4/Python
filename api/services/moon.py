@@ -59,6 +59,32 @@ def calculate_moon_position(
     altaz_frame = AltAz(obstime=time, location=location, pressure=0.0)
     moon_altaz = moon.transform_to(altaz_frame)
 
+    return _process_moon_position(moon_altaz, time, datetime_str, latitude, longitude, elevation)
+
+
+def _process_moon_position(
+    moon_altaz,
+    time: Time,
+    datetime_str: str,
+    latitude: float,
+    longitude: float,
+    elevation: float
+) -> dict:
+    """
+    Process moon position data into response format.
+    Internal function used by calculate_moon_position and batch operations.
+    
+    Args:
+        moon_altaz: Moon position in AltAz frame
+        time: Astropy Time object
+        datetime_str: Input datetime string
+        latitude: Latitude in degrees
+        longitude: Longitude in degrees
+        elevation: Elevation in meters
+    
+    Returns:
+        Dictionary with moon position data
+    """
     # Extract altitude and azimuth
     altitude = float(moon_altaz.alt.deg)
     azimuth = float(moon_altaz.az.deg)

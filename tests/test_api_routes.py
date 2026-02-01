@@ -624,3 +624,338 @@ class TestMoonPositionEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["location"]["elevation"] == 8848.86
+
+
+class TestBatchEarthObservationsEndpoint:
+    """Test cases for /api/v1/batch-earth-observations endpoint"""
+    
+    def test_valid_batch_request(self):
+        """Test valid batch request with multiple frames"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "18:00:00",
+                "frame_count": 7,
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 10.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Check frames array
+        assert "frames" in data
+        assert len(data["frames"]) == 7
+        
+        # Check first frame structure
+        first_frame = data["frames"][0]
+        assert "datetime" in first_frame
+        assert "sun" in first_frame
+        assert "moon" in first_frame
+        assert "moon_phase" in first_frame
+        assert first_frame["datetime"] == "2024-01-01T12:00:00"
+        
+        # Check sun data structure
+        assert "altitude" in first_frame["sun"]
+        assert "azimuth" in first_frame["sun"]
+        assert "is_visible" in first_frame["sun"]
+        
+        # Check moon data structure
+        assert "altitude" in first_frame["moon"]
+        assert "azimuth" in first_frame["moon"]
+        assert "is_visible" in first_frame["moon"]
+        
+        # Check moon phase structure
+        assert "illumination" in first_frame["moon_phase"]
+        assert "phase_angle" in first_frame["moon_phase"]
+        assert "phase_name" in first_frame["moon_phase"]
+        
+        # Check metadata
+        assert "metadata" in data
+        assert data["metadata"]["frame_count"] == 7
+        assert data["metadata"]["start_datetime"] == "2024-01-01T12:00:00"
+        assert data["metadata"]["end_datetime"] == "2024-01-01T18:00:00"
+        assert data["metadata"]["time_span_hours"] == 6.0
+        
+        # Check last frame
+        last_frame = data["frames"][-1]
+        assert last_frame["datetime"] == "2024-01-01T18:00:00"
+    
+    def test_batch_with_default_times(self):
+        """Test batch request with default start and end times"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "frame_count": 3,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Default start_time is 00:00:00, default end_time is 23:59:59
+        assert data["frames"][0]["datetime"] == "2024-01-01T00:00:00"
+        assert data["frames"][-1]["datetime"] == "2024-01-01T23:59:59"
+    
+    def test_batch_minimum_two_frames(self):
+        """Test batch request with minimum frame count"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "13:00:00",
+                "frame_count": 2,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["frames"]) == 2
+    
+    def test_batch_frame_count_too_low(self):
+        """Test batch request with frame_count less than 2"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "frame_count": 1,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 422  # Pydantic validation error
+    
+    def test_batch_frame_count_too_high(self):
+        """Test batch request with frame_count exceeding maximum"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-02",
+                "frame_count": 10001,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 422  # Pydantic validation error
+    
+    def test_batch_end_before_start(self):
+        """Test batch request where end_date is before start_date"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-02",
+                "end_date": "2024-01-01",
+                "frame_count": 2,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 400
+        assert "end_datetime must be after start_datetime" in response.json()["detail"]
+    
+    def test_batch_equal_start_end(self):
+        """Test batch request where start and end times are equal"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "12:00:00",
+                "frame_count": 2,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 400
+        assert "end_datetime must be after start_datetime" in response.json()["detail"]
+    
+    def test_batch_invalid_latitude(self):
+        """Test batch request with invalid latitude"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "end_time": "13:00:00",
+                "frame_count": 2,
+                "latitude": 91.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 422  # Pydantic validation error
+    
+    def test_batch_invalid_longitude(self):
+        """Test batch request with invalid longitude"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "end_time": "13:00:00",
+                "frame_count": 2,
+                "latitude": 0.0,
+                "longitude": 181.0
+            }
+        )
+        
+        assert response.status_code == 422  # Pydantic validation error
+    
+    def test_batch_invalid_date_format(self):
+        """Test batch request with invalid date format"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "01-01-2024",
+                "end_date": "2024-01-02",
+                "frame_count": 2,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 422  # Pydantic validation error
+    
+    def test_batch_missing_required_fields(self):
+        """Test batch request with missing required fields"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "frame_count": 2
+                # Missing end_date, latitude, longitude
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_batch_multi_day_span(self):
+        """Test batch calculation spanning multiple days"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-03",
+                "end_time": "12:00:00",
+                "frame_count": 3,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert len(data["frames"]) == 3
+        assert data["frames"][0]["datetime"] == "2024-01-01T12:00:00"
+        assert data["frames"][1]["datetime"] == "2024-01-02T12:00:00"
+        assert data["frames"][2]["datetime"] == "2024-01-03T12:00:00"
+        assert data["metadata"]["time_span_hours"] == 48.0
+    
+    def test_batch_negative_elevation(self):
+        """Test batch with negative elevation (below sea level)"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "13:00:00",
+                "frame_count": 2,
+                "latitude": 31.5,
+                "longitude": 35.5,
+                "elevation": -430.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["location"]["elevation"] == -430.0
+    
+    def test_batch_high_elevation(self):
+        """Test batch with high elevation (Mt. Everest)"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "12:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "13:00:00",
+                "frame_count": 2,
+                "latitude": 27.9881,
+                "longitude": 86.9250,
+                "elevation": 8848.86
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["location"]["elevation"] == 8848.86
+    
+    def test_batch_location_metadata(self):
+        """Test that location metadata is correctly returned"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "end_time": "01:00:00",
+                "frame_count": 2,
+                "latitude": 51.5074,
+                "longitude": -0.1278,
+                "elevation": 11.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["metadata"]["location"]["latitude"] == 51.5074
+        assert data["metadata"]["location"]["longitude"] == -0.1278
+        assert data["metadata"]["location"]["elevation"] == 11.0
+    
+    def test_batch_frame_intervals(self):
+        """Test that frames are evenly spaced"""
+        response = client.post(
+            "/api/v1/batch-earth-observations",
+            json={
+                "start_date": "2024-01-01",
+                "start_time": "00:00:00",
+                "end_date": "2024-01-01",
+                "end_time": "04:00:00",
+                "frame_count": 5,
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Check frames are evenly spaced at 1 hour intervals
+        assert data["frames"][0]["datetime"] == "2024-01-01T00:00:00"
+        assert data["frames"][1]["datetime"] == "2024-01-01T01:00:00"
+        assert data["frames"][2]["datetime"] == "2024-01-01T02:00:00"
+        assert data["frames"][3]["datetime"] == "2024-01-01T03:00:00"
+        assert data["frames"][4]["datetime"] == "2024-01-01T04:00:00"

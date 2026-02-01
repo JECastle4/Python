@@ -245,3 +245,101 @@ class DayOfWeekResponse(BaseModel):
         ...,
         description="The input date and time that was processed"
     )
+
+
+# Batch Earth Observations Models
+class BatchEarthObservationsRequest(BaseModel):
+    """Request model for batch earth observations"""
+    start_date: str = Field(
+        ...,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Start date in ISO format (YYYY-MM-DD)",
+        examples=["2026-02-01"]
+    )
+    start_time: str = Field(
+        default="00:00:00",
+        pattern=r"^\d{2}:\d{2}:\d{2}$",
+        description="Start time in ISO format (HH:MM:SS)",
+        examples=["00:00:00"]
+    )
+    end_date: str = Field(
+        ...,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="End date in ISO format (YYYY-MM-DD)",
+        examples=["2026-02-01"]
+    )
+    end_time: str = Field(
+        default="23:59:59",
+        pattern=r"^\d{2}:\d{2}:\d{2}$",
+        description="End time in ISO format (HH:MM:SS)",
+        examples=["23:59:59"]
+    )
+    frame_count: int = Field(
+        ...,
+        ge=2,
+        le=10000,
+        description="Number of frames to generate (2-10000)",
+        examples=[10]
+    )
+    latitude: float = Field(
+        ...,
+        ge=-90.0,
+        le=90.0,
+        description="Latitude in degrees",
+        examples=[40.7128]
+    )
+    longitude: float = Field(
+        ...,
+        ge=-180.0,
+        le=180.0,
+        description="Longitude in degrees",
+        examples=[-74.0060]
+    )
+    elevation: float = Field(
+        default=0.0,
+        description="Elevation in meters above sea level",
+        examples=[0.0]
+    )
+
+
+class CelestialPosition(BaseModel):
+    """Celestial object position data"""
+    altitude: float = Field(..., description="Altitude in degrees")
+    azimuth: float = Field(..., description="Azimuth in degrees")
+    is_visible: bool = Field(..., description="Whether object is above horizon")
+
+
+class MoonPhaseData(BaseModel):
+    """Moon phase information"""
+    illumination: float = Field(..., ge=0.0, le=1.0, description="Illumination fraction")
+    phase_angle: float = Field(..., ge=0.0, lt=360.0, description="Phase angle in degrees")
+    phase_name: str = Field(..., description="Name of the moon phase")
+
+
+class ObservationFrame(BaseModel):
+    """Single frame of observations"""
+    datetime: str = Field(..., description="ISO datetime of the frame")
+    sun: CelestialPosition = Field(..., description="Sun position")
+    moon: CelestialPosition = Field(..., description="Moon position")
+    moon_phase: MoonPhaseData = Field(..., description="Moon phase information")
+
+
+class BatchMetadata(BaseModel):
+    """Metadata about the batch observations"""
+    location: LocationModel = Field(..., description="Observer location")
+    frame_count: int = Field(..., description="Number of frames generated")
+    start_datetime: str = Field(..., description="Start datetime")
+    end_datetime: str = Field(..., description="End datetime")
+    time_span_hours: float = Field(..., description="Time span in hours")
+
+
+class BatchEarthObservationsResponse(BaseModel):
+    """Response model for batch earth observations"""
+    frames: list[ObservationFrame] = Field(
+        ...,
+        description="List of observation frames"
+    )
+    metadata: BatchMetadata = Field(
+        ...,
+        description="Metadata about the observations"
+    )

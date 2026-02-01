@@ -1,0 +1,180 @@
+"""Batch earth observations service for calculating multiple frames of celestial positions."""
+
+from astropy.time import Time
+from astropy.coordinates import get_sun, get_body, AltAz, EarthLocation
+import astropy.units as u
+from .sun import _process_sun_position
+from .moon import _process_moon_position
+from .moon_phase import _process_moon_phase
+
+
+def calculate_batch_earth_observations(
+    start_date: str,
+    start_time: str,
+    end_date: str,
+    end_time: str,
+    frame_count: int,
+    latitude: float,
+    longitude: float,
+    elevation: float = 0.0,
+) -> dict:
+    """
+    Calculate batch observations of sun and moon positions from Earth.
+    
+    This function generates multiple frames of celestial observations between
+    a start and end time. Each frame contains sun position, moon position,
+    and moon phase information for that specific moment.
+    
+    Args:
+        start_date: Start date in ISO format (YYYY-MM-DD)
+        start_time: Start time in ISO format (HH:MM:SS)
+        end_date: End date in ISO format (YYYY-MM-DD)
+        end_time: End time in ISO format (HH:MM:SS)
+        frame_count: Number of frames to generate (must be >= 2)
+        latitude: Observer latitude in degrees (-90 to 90)
+        longitude: Observer longitude in degrees (-180 to 180)
+        elevation: Observer elevation in meters (default: 0.0)
+    
+    Returns:
+        dict: Dictionary containing:
+            - frames: List of frame dictionaries, each with:
+                - datetime: ISO datetime string
+                - sun: Sun position data (altitude, azimuth, is_visible)
+                - moon: Moon position data (altitude, azimuth, is_visible)
+                - moon_phase: Moon phase data (illumination, phase_angle, phase_name)
+            - metadata: Dictionary with:
+                - location: Observer location (latitude, longitude, elevation)
+                - frame_count: Number of frames generated
+                - start_datetime: Start time
+                - end_datetime: End time
+                - time_span_hours: Duration in hours
+    
+    Raises:
+        ValueError: If frame_count < 2 or dates/coordinates are invalid
+    """
+    # Validate frame count
+    if frame_count < 2:
+        raise ValueError(f"frame_count must be at least 2, got {frame_count}")
+    
+    # Validate coordinates
+    if not -90 <= latitude <= 90:
+        raise ValueError(f"Latitude must be between -90 and 90 degrees, got {latitude}")
+    if not -180 <= longitude <= 180:
+        raise ValueError(f"Longitude must be between -180 and 180 degrees, got {longitude}")
+    
+    # Create start and end times
+    start_datetime_str = f"{start_date}T{start_time}"
+    end_datetime_str = f"{end_date}T{end_time}"
+    
+    start_t = Time(start_datetime_str, format="isot", scale="utc")
+    end_t = Time(end_datetime_str, format="isot", scale="utc")
+    
+    # Validate time order
+    if end_t <= start_t:
+        raise ValueError("end_datetime must be after start_datetime")
+    
+    # Calculate time span
+    time_span = end_t - start_t
+    time_span_hours = float(time_span.to(u.hour).value)
+    
+    # Generate time steps
+    time_delta = (end_t - start_t) / (frame_count - 1)
+    times = [start_t + i * time_delta for i in range(frame_count)]
+    
+    # Create location once for all frames
+    location = EarthLocation(
+        lat=latitude * u.deg,
+        lon=longitude * u.deg,
+        height=elevation * u.m
+    )
+    
+    # Calculate observations for each frame
+    frames = []
+    for t in times:
+        # Extract date and time components for datetime string
+        iso_parts = t.iso.split()
+        date_part = iso_parts[0]
+        time_part = iso_parts[1].split('.')[0]  # Remove milliseconds
+        datetime_str = f"{date_part}T{time_part}"
+        
+        # Create AltAz frame for this time
+        altaz_frame = AltAz(obstime=t, location=location, pressure=0.0)
+        
+        # Calculate sun and moon positions ONCE per frame
+        sun = get_sun(t)
+        moon = get_body("moon", t, location)
+        
+        # Transform to AltAz
+        sun_altaz = sun.transform_to(altaz_frame)
+        moon_altaz = moon.transform_to(altaz_frame)
+        
+        # Process sun position using internal function
+        sun_data = _process_sun_position(
+            sun_altaz=sun_altaz,
+            time=t,
+            datetime_str=datetime_str,
+            latitude=latitude,
+            longitude=longitude,
+            elevation=elevation
+        )
+        
+        # Process moon position using internal function
+        moon_data = _process_moon_position(
+            moon_altaz=moon_altaz,
+            time=t,
+            datetime_str=datetime_str,
+            latitude=latitude,
+            longitude=longitude,
+            elevation=elevation
+        )
+        
+        # Process moon phase using internal function (reuses sun and moon)
+        phase_data = _process_moon_phase(
+            sun=sun,
+            moon=moon,
+            time=t,
+            datetime_str=datetime_str,
+            latitude=latitude,
+            longitude=longitude,
+            elevation=elevation
+        )
+        
+        # Construct frame
+        frame = {
+            "datetime": f"{date_part}T{time_part}",
+            "sun": {
+                "altitude": sun_data["altitude"],
+                "azimuth": sun_data["azimuth"],
+                "is_visible": sun_data["is_visible"]
+            },
+            "moon": {
+                "altitude": moon_data["altitude"],
+                "azimuth": moon_data["azimuth"],
+                "is_visible": moon_data["is_visible"]
+            },
+            "moon_phase": {
+                "illumination": phase_data["illumination"],
+                "phase_angle": phase_data["phase_angle"],
+                "phase_name": phase_data["phase_name"]
+            }
+        }
+        
+        frames.append(frame)
+    
+    # Construct metadata
+    metadata = {
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
+            "elevation": elevation
+        },
+        "frame_count": frame_count,
+        "start_datetime": start_datetime_str,
+        "end_datetime": end_datetime_str,
+        "time_span_hours": time_span_hours
+    }
+    
+    return {
+        "frames": frames,
+        "metadata": metadata
+    }
