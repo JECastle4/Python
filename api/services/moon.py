@@ -30,8 +30,17 @@ def calculate_moon_position(
             - julian_date: Julian Date of the observation
             - location: Dict with latitude, longitude, elevation
             - input_datetime: Original input datetime string
+    
+    Raises:
+        ValueError: If date/time format is invalid or coordinates out of range
     """
-    # Combine date and time
+    # Validate coordinates
+    if not -90 <= latitude <= 90:
+        raise ValueError(f"Latitude must be between -90 and 90 degrees, got {latitude}")
+    if not -180 <= longitude <= 180:
+        raise ValueError(f"Longitude must be between -180 and 180 degrees, got {longitude}")
+    
+    # Combine date and time (ISO 8601 format)
     datetime_str = f"{date_str}T{time_str}"
 
     # Convert to astropy Time (assumes UTC)

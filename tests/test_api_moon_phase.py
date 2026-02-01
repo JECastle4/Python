@@ -326,3 +326,26 @@ def test_invalid_time_format():
             longitude=-74.0060,
             elevation=0.0,
         )
+
+def test_invalid_latitude():
+    """Test that latitude outside valid range raises ValueError."""
+    with pytest.raises(ValueError, match="Latitude must be between -90 and 90"):
+        calculate_moon_phase(
+            date_str="2025-01-15",
+            time_str="12:00:00",
+            latitude=100.0,
+            longitude=0.0,
+            elevation=0.0,
+        )
+
+
+def test_invalid_longitude():
+    """Test that longitude outside valid range raises ValueError."""
+    with pytest.raises(ValueError, match="Longitude must be between -180 and 180"):
+        calculate_moon_phase(
+            date_str="2025-01-15",
+            time_str="12:00:00",
+            latitude=0.0,
+            longitude=200.0,
+            elevation=0.0,
+        )

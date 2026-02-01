@@ -116,7 +116,7 @@ class TestCalculateSunPosition:
             longitude=-75.0
         )
         
-        assert result["input_datetime"] == "2026-02-01 14:30:45"
+        assert result["input_datetime"] == "2026-02-01T14:30:45"
     
     def test_azimuth_range(self):
         """Test that azimuth is always in valid range"""

@@ -4,7 +4,6 @@ Sun position calculation services
 from astropy.coordinates import get_sun, AltAz, EarthLocation
 from astropy.time import Time
 import astropy.units as u
-from datetime import datetime
 
 
 def calculate_sun_position(
@@ -42,14 +41,11 @@ def calculate_sun_position(
     if not -180 <= longitude <= 180:
         raise ValueError(f"Longitude must be between -180 and 180 degrees, got {longitude}")
     
-    # Combine date and time
-    datetime_str = f"{date_str} {time_str}"
-    
-    # Parse the datetime
-    dt = datetime.fromisoformat(datetime_str)
+    # Combine date and time (ISO 8601 format)
+    datetime_str = f"{date_str}T{time_str}"
     
     # Convert to astropy Time
-    t = Time(dt, format='datetime', scale='utc')
+    t = Time(datetime_str, format='isot', scale='utc')
     
     # Create Earth location
     location = EarthLocation(
