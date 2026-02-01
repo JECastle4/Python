@@ -3,3 +3,7 @@ numpy
 matplotlib
 PyOpenGL
 PyOpenGL-accelerate
+fastapi
+uvicorn[standard]
+pytest
+httpx
