@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sun Position Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        .results.visible {
+            display: block;
+        }
+        .result-item {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .result-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .sun-visual {
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+        }
+        .horizon {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(to bottom, #90EE90 0%, #228B22 100%);
+            border-radius: 0 0 150px 150px;
+        }
+        .sun {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #FFA500;
+            transition: all 0.5s ease;
+        }
+        .status {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .status.visible {
+            color: #28a745;
+        }
+        .status.hidden {
+            color: #dc3545;
+        }
+        .auto-update {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌞 Sun Position API Demo</h1>
+        
+        <div class="input-group">
+            <label for="date">Date:</label>
+            <input type="date" id="date" value="">
+        </div>
+        
+        <div class="input-group">
+            <label for="time">Time (UTC):</label>
+            <input type="time" id="time" step="1" value="">
+        </div>
+        
+        <div class="input-group">
+            <label for="latitude">Latitude (-90 to 90):</label>
+            <input type="number" id="latitude" step="0.0001" value="40.7128" min="-90" max="90">
+        </div>
+        
+        <div class="input-group">
+            <label for="longitude">Longitude (-180 to 180):</label>
+            <input type="number" id="longitude" step="0.0001" value="-74.0060" min="-180" max="180">
+        </div>
+        
+        <div class="input-group">
+            <label for="elevation">Elevation (meters):</label>
+            <input type="number" id="elevation" step="0.1" value="10">
+        </div>
+        
+        <button onclick="getSunPosition()">Get Sun Position</button>
+        <button onclick="toggleAutoUpdate()" id="autoUpdateBtn">Enable Auto-Update</button>
+        
+        <div class="auto-update">
+            <strong>Auto-Update:</strong> When enabled, the sun position will update every 5 seconds with the current time.
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="results" id="results">
+            <h2>Results</h2>
+            
+            <div class="sun-visual">
+                <div class="horizon"></div>
+                <div class="sun" id="sunDot"></div>
+            </div>
+            
+            <div class="status" id="status"></div>
+            
+            <div class="result-item">
+                <span class="result-label">Altitude:</span>
+                <span id="altitude">--</span>°
+            </div>
+            
+            <div class="result-item">
+                <span class="result-label">Azimuth:</span>
+                <span id="azimuth">--</span>°
+            </div>
+            
+            <div class="result-item">
+                <span class="result-label">Julian Date:</span>
+                <span id="julianDate">--</span>
+            </div>
+            
+            <div class="result-item">
+                <span class="result-label">Input Time:</span>
+                <span id="inputTime">--</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize with current date/time
+        const now = new Date();
+        document.getElementById('date').valueAsDate = now;
+        document.getElementById('time').value = now.toTimeString().split(' ')[0];
+        
+        let autoUpdateInterval = null;
+        
+        async function getSunPosition() {
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            const elevation = parseFloat(document.getElementById('elevation').value);
+            
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/v1/sun-position', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: date,
+                        time: time,
+                        latitude: latitude,
+                        longitude: longitude,
+                        elevation: elevation
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'API request failed');
+                }
+                
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                errorDiv.textContent = 'Error: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        function displayResults(data) {
+            document.getElementById('results').classList.add('visible');
+            document.getElementById('altitude').textContent = data.altitude.toFixed(2);
+            document.getElementById('azimuth').textContent = data.azimuth.toFixed(2);
+            document.getElementById('julianDate').textContent = data.julian_date.toFixed(2);
+            document.getElementById('inputTime').textContent = data.input_datetime;
+            
+            const statusDiv = document.getElementById('status');
+            if (data.is_visible) {
+                statusDiv.textContent = '☀️ Sun is VISIBLE';
+                statusDiv.className = 'status visible';
+            } else {
+                statusDiv.textContent = '🌙 Sun is BELOW HORIZON';
+                statusDiv.className = 'status hidden';
+            }
+            
+            // Update visual representation
+            updateSunVisual(data.altitude, data.azimuth, data.is_visible);
+        }
+        
+        function updateSunVisual(altitude, azimuth, isVisible) {
+            const sunDot = document.getElementById('sunDot');
+            const visualRadius = 130; // pixels from center
+            
+            // Convert altitude (-90 to +90) to radius (0 to visualRadius)
+            // 0° altitude = horizon, 90° = zenith
+            const normalizedAlt = Math.max(-90, Math.min(90, altitude));
+            const radius = visualRadius * (1 - (normalizedAlt + 90) / 180);
+            
+            // Convert azimuth to radians (0° = North = top)
+            const azimuthRad = (azimuth - 90) * Math.PI / 180;
+            
+            // Calculate position (center is 150, 150)
+            const x = 150 + radius * Math.cos(azimuthRad) - 20; // -20 for sun size
+            const y = 150 + radius * Math.sin(azimuthRad) - 20;
+            
+            sunDot.style.left = x + 'px';
+            sunDot.style.top = y + 'px';
+            sunDot.style.opacity = isVisible ? '1' : '0.3';
+        }
+        
+        function toggleAutoUpdate() {
+            const btn = document.getElementById('autoUpdateBtn');
+            
+            if (autoUpdateInterval) {
+                // Disable auto-update
+                clearInterval(autoUpdateInterval);
+                autoUpdateInterval = null;
+                btn.textContent = 'Enable Auto-Update';
+                btn.style.background = '#007bff';
+            } else {
+                // Enable auto-update
+                autoUpdateInterval = setInterval(() => {
+                    // Update time to current
+                    const now = new Date();
+                    document.getElementById('time').value = now.toTimeString().split(' ')[0];
+                    getSunPosition();
+                }, 5000); // Update every 5 seconds
+                
+                btn.textContent = 'Disable Auto-Update';
+                btn.style.background = '#dc3545';
+                
+                // Get initial position
+                getSunPosition();
+            }
+        }
+    </script>
+</body>
+</html>

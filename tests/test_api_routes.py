@@ -174,3 +174,142 @@ class TestHealthEndpoints:
         data = response.json()
         
         assert data["status"] == "healthy"
+
+
+class TestSunPositionEndpoint:
+    """Test cases for /api/v1/sun-position endpoint"""
+    
+    def test_valid_request(self):
+        """Test valid sun position request"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "elevation": 10.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert "altitude" in data
+        assert "azimuth" in data
+        assert "is_visible" in data
+        assert "julian_date" in data
+        assert "input_datetime" in data
+        assert "location" in data
+        
+        assert isinstance(data["altitude"], float)
+        assert isinstance(data["azimuth"], float)
+        assert isinstance(data["is_visible"], bool)
+        assert -90 <= data["altitude"] <= 90
+        assert 0 <= data["azimuth"] < 360
+    
+    def test_request_without_elevation(self):
+        """Test request with default elevation"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "12:00:00",
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["elevation"] == 0.0
+    
+    def test_invalid_latitude(self):
+        """Test with invalid latitude"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "12:00:00",
+                "latitude": 91.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 422  # Validation error
+    
+    def test_invalid_longitude(self):
+        """Test with invalid longitude"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "12:00:00",
+                "latitude": 0.0,
+                "longitude": 181.0
+            }
+        )
+        
+        assert response.status_code == 422  # Validation error
+    
+    def test_missing_required_fields(self):
+        """Test with missing required fields"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "12:00:00"
+                # Missing latitude and longitude
+            }
+        )
+        
+        assert response.status_code == 422
+    
+    def test_invalid_date_format(self):
+        """Test with invalid date format"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "not-a-date",
+                "time": "12:00:00",
+                "latitude": 0.0,
+                "longitude": 0.0
+            }
+        )
+        
+        assert response.status_code == 400
+        assert "Invalid input" in response.json()["detail"]
+    
+    def test_sun_visible_at_noon(self):
+        """Test that sun is visible at noon"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-06-21",
+                "time": "12:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_visible"] is True
+        assert data["altitude"] > 0
+    
+    def test_sun_not_visible_at_midnight(self):
+        """Test that sun is not visible at midnight"""
+        response = client.post(
+            "/api/v1/sun-position",
+            json={
+                "date": "2026-02-01",
+                "time": "00:00:00",
+                "latitude": 40.7128,
+                "longitude": -74.0060
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_visible"] is False
+        assert data["altitude"] < 0

@@ -2,8 +2,9 @@
 API routes for astronomy calculations
 """
 from fastapi import APIRouter, HTTPException
-from api.models import DateTimeRequest, DayOfWeekResponse
+from api.models import DateTimeRequest, DayOfWeekResponse, SunPositionRequest, SunPositionResponse
 from api.services.dates import calculate_day_of_week
+from api.services.sun import calculate_sun_position
 
 router = APIRouter()
 
@@ -38,4 +39,48 @@ async def get_day_of_week(request: DateTimeRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error calculating day of week: {str(e)}"
+        )
+
+
+@router.post("/sun-position", response_model=SunPositionResponse)
+async def get_sun_position(request: SunPositionRequest):
+    """
+    Calculate the sun's position at a given time and location.
+    
+    Returns altitude (angle above horizon) and azimuth (compass direction),
+    along with visibility status.
+    
+    - **date**: Date in ISO format (YYYY-MM-DD)
+    - **time**: Time in HH:MM:SS format
+    - **latitude**: Latitude in degrees (-90 to 90)
+    - **longitude**: Longitude in degrees (-180 to 180)
+    - **elevation**: Elevation above sea level in meters (optional)
+    
+    Returns:
+    - **altitude**: Sun's altitude in degrees (negative = below horizon)
+    - **azimuth**: Sun's azimuth in degrees (0=North, 90=East)
+    - **is_visible**: True if sun is above horizon
+    - **julian_date**: JD for this calculation
+    - **input_datetime**: The processed input
+    - **location**: The location used for calculation
+    """
+    try:
+        result = calculate_sun_position(
+            request.date,
+            request.time,
+            request.latitude,
+            request.longitude,
+            request.elevation
+        )
+        return SunPositionResponse(**result)
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid input: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error calculating sun position: {str(e)}"
         )
