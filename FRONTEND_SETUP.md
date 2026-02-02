@@ -1,0 +1,98 @@
+# Web Frontend Setup Guide
+
+## Step 1: Install Node.js
+
+Download and install Node.js from: https://nodejs.org/
+
+Choose the **LTS version** (Long Term Support) - currently 20.x or newer.
+
+Verify installation:
+```powershell
+node --version
+npm --version
+```
+
+## Step 2: Install Dependencies
+
+Navigate to the frontend directory and install packages:
+
+```powershell
+cd frontend
+npm install
+```
+
+This will install:
+- Vue 3
+- TypeScript
+- Vite (build tool)
+- Three.js
+- OrbitControls
+
+## Step 3: Start the Backend API
+
+In a separate terminal, start the FastAPI server:
+
+```powershell
+# From the Python project root
+uvicorn api.main:app --reload
+```
+
+API should be running on: http://localhost:8000
+
+## Step 4: Start the Frontend Dev Server
+
+In the frontend directory:
+
+```powershell
+npm run dev
+```
+
+Frontend will be available at: http://localhost:5173
+
+## Step 5: Test the Application
+
+1. Open http://localhost:5173 in your browser
+2. Enter location details (default: London - 51.5°N, 0.1°W)
+3. Set date range (default: 24 hours)
+4. Click "Load Data" - this will fetch from your local API
+5. Use "Play" to animate
+6. Use mouse to orbit the camera
+
+## CORS Configuration
+
+The FastAPI backend needs CORS enabled for local development. This should already be configured in `api/main.py`:
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## Troubleshooting
+
+**Problem:** API requests fail with CORS error
+**Solution:** Check CORS middleware in FastAPI and that backend is running
+
+**Problem:** "Module not found" errors
+**Solution:** Run `npm install` again
+
+**Problem:** TypeScript errors
+**Solution:** Run `npm run type-check` to see detailed errors
+
+**Problem:** Black screen
+**Solution:** Check browser console for WebGL errors (F12)
+
+## Next Steps
+
+- Add textures to celestial bodies
+- Implement proper time interpolation between data points
+- Add star background
+- Add trajectory trails
+- Add time controls (play/pause/speed)
+- Add date picker UI
