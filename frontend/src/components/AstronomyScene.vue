@@ -3,7 +3,7 @@
     <canvas ref="canvasRef"></canvas>
     
     <div class="controls-panel">
-      <h2>Astronomy Animation</h2>
+      <h2>Sun and Moon Animation from Earth</h2>
       
       <div v-if="loading" class="loading">
         Loading data...
@@ -54,6 +54,16 @@
       
       <div v-if="hasData" class="animation-controls">
         <p>Frames: {{ frameCount }}</p>
+        
+        <div class="view-toggle">
+          <button @click="setViewMode('3D')" :class="{ active: viewMode === '3D' }">
+            3D View
+          </button>
+          <button @click="setViewMode('SKY')" :class="{ active: viewMode === 'SKY' }">
+            Sky View
+          </button>
+        </div>
+        
         <button @click="toggleAnimation">
           {{ isAnimating ? 'Pause' : 'Play' }}
         </button>
@@ -101,6 +111,7 @@ let earth: Earth | null = null;
 const isAnimating = ref(false);
 const animationSpeed = ref(1.0);
 const currentIndex = ref(0);
+const viewMode = ref<'3D' | 'SKY'>('3D');
 
 // API data
 const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
@@ -167,16 +178,29 @@ function updatePositions() {
   sun.updatePosition(
     frame.sun.azimuth,
     frame.sun.altitude,
-    frame.sun.is_visible
+    frame.sun.is_visible,
+    viewMode.value
   );
   
   moon.updatePosition(
     frame.moon.azimuth,
     frame.moon.altitude,
-    frame.moon.is_visible
+    frame.moon.is_visible,
+    viewMode.value
   );
   
   moon.updatePhase(frame.moon_phase.illumination * 100);
+}
+
+// Switch view mode
+function setViewMode(mode: '3D' | 'SKY') {
+  viewMode.value = mode;
+  
+  if (sceneManager && earth) {
+    sceneManager.setViewMode(mode);
+    earth.setViewMode(mode);
+    updatePositions();
+  }
 }
 
 // Animation loop callback
@@ -282,6 +306,27 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
 }
 
 button:hover:not(:disabled) {

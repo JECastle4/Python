@@ -12,6 +12,7 @@ export class SceneManager {
   
   private animationId: number | null = null;
   private animationCallback?: () => void;
+  private currentViewMode: '3D' | 'SKY' = '3D';
 
   constructor(canvas: HTMLCanvasElement) {
     // Create scene
@@ -93,6 +94,33 @@ export class SceneManager {
 
     // Render scene
     this.renderer.render(this.scene, this.camera);
+  }
+  
+  public setViewMode(mode: '3D' | 'SKY'): void {
+    this.currentViewMode = mode;
+    
+    if (mode === '3D') {
+      // 3D orbital view
+      this.camera.position.set(0, 5, 10);
+      this.controls.target.set(0, 0, 0);
+      this.controls.minDistance = 2;
+      this.controls.maxDistance = 50;
+      this.scene.background = new THREE.Color(0x000011);
+    } else {
+      // Sky view: camera at ground level looking straight up
+      this.camera.position.set(0, 0.1, 0);
+      this.controls.target.set(0, 10, 0);
+      this.controls.minDistance = 0.1;
+      this.controls.maxDistance = 20;
+      this.controls.enablePan = true;
+      this.scene.background = new THREE.Color(0x001133);
+    }
+    
+    this.controls.update();
+  }
+  
+  public getViewMode(): '3D' | 'SKY' {
+    return this.currentViewMode;
   }
 
   public dispose(): void {
