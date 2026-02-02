@@ -166,12 +166,14 @@ function updatePositions() {
   
   sun.updatePosition(
     frame.sun.azimuth,
-    frame.sun.altitude
+    frame.sun.altitude,
+    frame.sun.is_visible
   );
   
   moon.updatePosition(
     frame.moon.azimuth,
-    frame.moon.altitude
+    frame.moon.altitude,
+    frame.moon.is_visible
   );
   
   moon.updatePhase(frame.moon_phase.illumination * 100);

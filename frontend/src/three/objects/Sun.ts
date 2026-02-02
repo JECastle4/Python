@@ -27,7 +27,7 @@ export class Sun {
   /**
    * Update sun position based on spherical coordinates
    */
-  public updatePosition(azimuth: number, altitude: number): void {
+  public updatePosition(azimuth: number, altitude: number, isVisible: boolean = true): void {
     // Convert azimuth/altitude to Three.js coordinates
     // Azimuth: 0° = North, 90° = East (clockwise from above)
     // Altitude: 0° = horizon, 90° = zenith
@@ -41,6 +41,10 @@ export class Sun {
     this.mesh.position.x = distance * Math.cos(altitudeRad) * Math.sin(azimuthRad);
     this.mesh.position.y = distance * Math.sin(altitudeRad);
     this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+    
+    // Update visibility
+    this.mesh.visible = isVisible;
+    this.light.visible = isVisible;
   }
 
   public addToScene(scene: THREE.Scene): void {

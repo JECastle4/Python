@@ -22,7 +22,7 @@ export class Moon {
   /**
    * Update moon position based on spherical coordinates
    */
-  public updatePosition(azimuth: number, altitude: number): void {
+  public updatePosition(azimuth: number, altitude: number, isVisible: boolean = true): void {
     // Convert azimuth/altitude to Three.js coordinates
     const azimuthRad = THREE.MathUtils.degToRad(azimuth);
     const altitudeRad = THREE.MathUtils.degToRad(altitude);
@@ -33,6 +33,9 @@ export class Moon {
     this.mesh.position.x = distance * Math.cos(altitudeRad) * Math.sin(azimuthRad);
     this.mesh.position.y = distance * Math.sin(altitudeRad);
     this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+    
+    // Update visibility
+    this.mesh.visible = isVisible;
   }
 
   /**
