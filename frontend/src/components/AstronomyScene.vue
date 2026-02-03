@@ -117,6 +117,11 @@ const viewMode = ref<'3D' | 'SKY'>('3D');
 const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
 
 // Form parameters with defaults
+// TODO: Improve date/time handling - calculate intelligent start/end times based on:
+//   - Sun/moon rise/set times for the location
+//   - Astronomical events (dawn, dusk, twilight periods)
+//   - User's timezone
+//   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
 const params = ref({
   latitude: 51.5,
   longitude: -0.1,
