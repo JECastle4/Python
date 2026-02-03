@@ -16,7 +16,7 @@ import * as THREE from 'three';
  * - Unit tests cover API client and composables at 100% coverage
  * - E2E tests with Playwright/Puppeteer would provide integration and visual testing
  * 
- * TODO: Add E2E tests with headless browser for:
+ * TODO (#15): Add E2E tests with headless browser for:
  * - Scene initialization and rendering
  * - Camera controls and view switching
  * - Animation loop and frame updates
