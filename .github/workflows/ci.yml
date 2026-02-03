@@ -84,7 +84,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Run Trivy vulnerability scanner - Python dependencies
-      # Using pinned version @0.28.0 for stability while staying reasonably current
+      # Using pinned version for stability while staying reasonably current
       # Update periodically to get new vulnerability definitions
       uses: aquasecurity/trivy-action@0.33.1
       with:
@@ -96,7 +96,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
     
     - name: Run Trivy vulnerability scanner - npm dependencies
-      # Using pinned version @0.28.0 for same reason as above
+      # Using pinned version for same reason as above
       uses: aquasecurity/trivy-action@0.33.1
       with:
         scan-type: 'fs'
