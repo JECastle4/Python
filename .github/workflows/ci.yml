@@ -75,3 +75,99 @@ jobs:
         path: |
           bandit-report.json
           pylint-report.txt
+
+  trivy-security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner - Python dependencies
+      # Using pinned version @0.28.0 for stability while staying reasonably current
+      # Update periodically to get new vulnerability definitions
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        scanners: 'vuln,secret,misconfig'
+        format: 'sarif'
+        output: 'trivy-python-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+    
+    - name: Run Trivy vulnerability scanner - npm dependencies
+      # Using pinned version @0.28.0 for same reason as above
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        scan-type: 'fs'
+        scan-ref: './frontend'
+        scanners: 'vuln,secret'
+        format: 'sarif'
+        output: 'trivy-npm-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+    
+    - name: Upload Trivy results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: '.'
+      continue-on-error: true
+    
+    - name: Upload Trivy artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-reports
+        path: |
+          trivy-python-results.sarif
+          trivy-npm-results.sarif
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Type check
+      run: npm run type-check
+    
+    - name: Run tests with coverage
+      run: npm run test:coverage -- --run
+      # Coverage thresholds enforced by vitest.config.ts:
+      # - Global: 80% for lines, functions, branches, statements
+      # - Per-file: Higher standards for business logic (90-100%)
+      # - Exclusions: scene.ts (WebGL), config.ts (environment-dependent)
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        files: ./frontend/coverage/coverage-final.json
+        flags: frontend
+        name: codecov-frontend
+      # TODO (#7): Remove continue-on-error after Codecov stability verified
+      # Currently prevents CI failures from Codecov service issues, but means upload
+      # failures won't be visible. Monitor Codecov dashboard for 10+ successful uploads,
+      # then remove this flag and close issue #7.
+      continue-on-error: true
+    
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: frontend-coverage
+        path: frontend/coverage/
