@@ -16,12 +16,34 @@
       <div v-if="!hasData" class="input-form">
         <div class="form-group">
           <label>Latitude:</label>
-          <input v-model.number="params.latitude" type="number" step="0.1" />
+          <input 
+            v-model.number="params.latitude" 
+            type="number" 
+            step="0.1"
+            min="-90"
+            max="90"
+            required
+            :class="{ invalid: !isLatitudeValid }"
+          />
+          <span v-if="!isLatitudeValid" class="error-message">
+            Latitude must be between -90° and 90°
+          </span>
         </div>
         
         <div class="form-group">
           <label>Longitude:</label>
-          <input v-model.number="params.longitude" type="number" step="0.1" />
+          <input 
+            v-model.number="params.longitude" 
+            type="number" 
+            step="0.1"
+            min="-180"
+            max="180"
+            required
+            :class="{ invalid: !isLongitudeValid }"
+          />
+          <span v-if="!isLongitudeValid" class="error-message">
+            Longitude must be between -180° and 180°
+          </span>
         </div>
         
         <div class="form-group">
@@ -46,10 +68,20 @@
         
         <div class="form-group">
           <label>Frame Count:</label>
-          <input v-model.number="params.frame_count" type="number" min="2" max="1000" />
+          <input 
+            v-model.number="params.frame_count" 
+            type="number" 
+            min="2" 
+            max="1000"
+            required
+            :class="{ invalid: !isFrameCountValid }"
+          />
+          <span v-if="!isFrameCountValid" class="error-message">
+            Frame count must be between 2 and 1000
+          </span>
         </div>
         
-        <button @click="loadData" :disabled="loading">Load Data</button>
+        <button @click="loadData" :disabled="loading || !isFormValid">Load Data</button>
       </div>
       
       <div v-if="hasData" class="animation-controls">
@@ -140,6 +172,26 @@ const currentFrame = computed<ObservationFrame | null>(() => {
     return null;
   }
   return data.value.frames[currentIndex.value];
+});
+
+// Form validation
+const isLatitudeValid = computed(() => {
+  const lat = params.value.latitude;
+  return typeof lat === 'number' && lat >= -90 && lat <= 90;
+});
+
+const isLongitudeValid = computed(() => {
+  const lon = params.value.longitude;
+  return typeof lon === 'number' && lon >= -180 && lon <= 180;
+});
+
+const isFrameCountValid = computed(() => {
+  const count = params.value.frame_count;
+  return typeof count === 'number' && count >= 2 && count <= 1000 && Number.isInteger(count);
+});
+
+const isFormValid = computed(() => {
+  return isLatitudeValid.value && isLongitudeValid.value && isFrameCountValid.value;
 });
 
 // Initialize Three.js scene
@@ -300,6 +352,18 @@ canvas {
   background: #222;
   color: white;
   font-size: 0.9em;
+}
+
+.form-group input.invalid {
+  border-color: #ff4444;
+  background: #331111;
+}
+
+.error-message {
+  display: block;
+  color: #ff4444;
+  font-size: 0.8em;
+  margin-top: 4px;
 }
 
 button {
