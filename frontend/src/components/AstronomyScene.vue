@@ -177,17 +177,17 @@ const currentFrame = computed<ObservationFrame | null>(() => {
 // Form validation
 const isLatitudeValid = computed(() => {
   const lat = params.value.latitude;
-  return typeof lat === 'number' && lat >= -90 && lat <= 90;
+  return Number.isFinite(lat) && lat >= -90 && lat <= 90;
 });
 
 const isLongitudeValid = computed(() => {
   const lon = params.value.longitude;
-  return typeof lon === 'number' && lon >= -180 && lon <= 180;
+  return Number.isFinite(lon) && lon >= -180 && lon <= 180;
 });
 
 const isFrameCountValid = computed(() => {
   const count = params.value.frame_count;
-  return typeof count === 'number' && count >= 2 && count <= 1000 && Number.isInteger(count);
+  return Number.isFinite(count) && count >= 2 && count <= 1000 && Number.isInteger(count);
 });
 
 const isFormValid = computed(() => {
