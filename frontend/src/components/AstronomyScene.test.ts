@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import AstronomyScene from './AstronomyScene.vue';
 
 // Mock Three.js modules to avoid WebGL context errors
@@ -42,19 +42,23 @@ vi.mock('@/three/objects/Moon', () => ({
 }));
 
 // Mock composable - will be customized per test
-let mockLoadData = vi.fn();
+let mockFetchBatchObservations = vi.fn();
 let mockLoading = { value: false };
 let mockError: { value: string | null } = { value: null };
 let mockData: { value: any } = { value: null };
 let mockHasData = { value: false };
+let mockFrameCount = { value: 24 };
+let mockClearData = vi.fn();
 
 vi.mock('@/composables/useAstronomyData', () => ({
   useAstronomyData: vi.fn(() => ({
     loading: mockLoading,
     error: mockError,
     data: mockData,
-    loadData: mockLoadData,
+    fetchBatchObservations: mockFetchBatchObservations,
     hasData: mockHasData,
+    frameCount: mockFrameCount,
+    clearData: mockClearData,
   })),
 }));
 
@@ -63,7 +67,7 @@ describe('AstronomyScene - Form Validation', () => {
 
   beforeEach(() => {
     // Reset mock state
-    mockLoadData = vi.fn();
+    mockFetchBatchObservations = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
@@ -146,7 +150,7 @@ describe('AstronomyScene - Form Validation', () => {
 
   describe('isFrameCountValid', () => {
     it('should accept valid frame count values', () => {
-      const testCases = [2, 10, 100, 500, 1000];
+      const testCases = [2, 10, 100, 1000, 5000, 10000];
       
       for (const count of testCases) {
         const vm = wrapper.vm as any;
@@ -161,9 +165,9 @@ describe('AstronomyScene - Form Validation', () => {
       expect(vm.isFrameCountValid).toBe(false);
     });
 
-    it('should reject frame count above 1000', () => {
+    it('should reject frame count above 10000', () => {
       const vm = wrapper.vm as any;
-      vm.params.frame_count = 1001;
+      vm.params.frame_count = 10001;
       expect(vm.isFrameCountValid).toBe(false);
     });
 
@@ -229,21 +233,33 @@ describe('AstronomyScene - Form Validation', () => {
   });
 
   describe('Button disabled state', () => {
-    it('should have disabled property when form is invalid', async () => {
+    it('should compute isFormValid as false when form is invalid', async () => {
       const vm = wrapper.vm as any;
-      vm.params.latitude = 100; // Invalid
+      // Mutate the ref's properties directly to trigger reactivity
+      vm.params.latitude = 100; // Invalid - outside -90 to 90 range
+      vm.params.longitude = -0.1;
+      vm.params.frame_count = 24;
+      await flushPromises();
       await wrapper.vm.$nextTick();
       
+      // Verify computed properties correctly determine validation state
+      expect(vm.isLatitudeValid).toBe(false);
+      expect(vm.isLongitudeValid).toBe(true);
+      expect(vm.isFrameCountValid).toBe(true);
       expect(vm.isFormValid).toBe(false);
     });
 
-    it('should not have disabled property when form is valid', async () => {
+    it('should compute isFormValid as true when all fields are valid', async () => {
       const vm = wrapper.vm as any;
       vm.params.latitude = 51.5;
       vm.params.longitude = -0.1;
       vm.params.frame_count = 100;
       await wrapper.vm.$nextTick();
       
+      // Verify all validation computed properties return true
+      expect(vm.isLatitudeValid).toBe(true);
+      expect(vm.isLongitudeValid).toBe(true);
+      expect(vm.isFrameCountValid).toBe(true);
       expect(vm.isFormValid).toBe(true);
     });
   });
@@ -253,7 +269,7 @@ describe('AstronomyScene - Data Loading', () => {
   let wrapper: ReturnType<typeof mount>;
 
   beforeEach(() => {
-    mockLoadData = vi.fn();
+    mockFetchBatchObservations = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
@@ -283,7 +299,7 @@ describe('AstronomyScene - With Data Loaded', () => {
   let wrapper: ReturnType<typeof mount>;
 
   beforeEach(() => {
-    mockLoadData = vi.fn();
+    mockFetchBatchObservations = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = {

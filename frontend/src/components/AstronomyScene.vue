@@ -72,12 +72,13 @@
             v-model.number="params.frame_count" 
             type="number" 
             min="2" 
-            max="1000"
+            max="10000"
+            step="1"
             required
             :class="{ invalid: !isFrameCountValid }"
           />
           <span v-if="!isFrameCountValid" class="error-message">
-            Frame count must be between 2 and 1000
+            Frame count must be between 2 and 10000
           </span>
         </div>
         
@@ -187,7 +188,7 @@ const isLongitudeValid = computed(() => {
 
 const isFrameCountValid = computed(() => {
   const count = params.value.frame_count;
-  return Number.isFinite(count) && count >= 2 && count <= 1000 && Number.isInteger(count);
+  return Number.isFinite(count) && count >= 2 && count <= 10000 && Number.isInteger(count);
 });
 
 const isFormValid = computed(() => {
