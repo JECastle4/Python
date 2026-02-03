@@ -13,6 +13,7 @@ export class SceneManager {
   private animationId: number | null = null;
   private animationCallback?: () => void;
   private currentViewMode: '3D' | 'SKY' = '3D';
+  private resizeHandler: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     // Create scene
@@ -46,8 +47,9 @@ export class SceneManager {
     // Add basic lighting
     this.setupLighting();
 
-    // Handle window resize
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    // Handle window resize - store bound function to allow proper cleanup
+    this.resizeHandler = this.onWindowResize.bind(this);
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   private setupLighting(): void {
@@ -125,7 +127,7 @@ export class SceneManager {
 
   public dispose(): void {
     this.stopAnimation();
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
+    window.removeEventListener('resize', this.resizeHandler);
     this.controls.dispose();
     this.renderer.dispose();
   }
