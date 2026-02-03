@@ -41,13 +41,20 @@ vi.mock('@/three/objects/Moon', () => ({
   },
 }));
 
+// Mock composable - will be customized per test
+let mockLoadData = vi.fn();
+let mockLoading = { value: false };
+let mockError = { value: null };
+let mockData = { value: null };
+let mockHasData = { value: false };
+
 vi.mock('@/composables/useAstronomyData', () => ({
   useAstronomyData: vi.fn(() => ({
-    loading: { value: false },
-    error: { value: null },
-    data: { value: null },
-    loadData: vi.fn(),
-    hasData: { value: false },
+    loading: mockLoading,
+    error: mockError,
+    data: mockData,
+    loadData: mockLoadData,
+    hasData: mockHasData,
   })),
 }));
 
@@ -55,6 +62,13 @@ describe('AstronomyScene - Form Validation', () => {
   let wrapper: ReturnType<typeof mount>;
 
   beforeEach(() => {
+    // Reset mock state
+    mockLoadData = vi.fn();
+    mockLoading.value = false;
+    mockError.value = null;
+    mockData.value = null;
+    mockHasData.value = false;
+    
     wrapper = mount(AstronomyScene);
   });
 
@@ -234,3 +248,97 @@ describe('AstronomyScene - Form Validation', () => {
     });
   });
 });
+
+describe('AstronomyScene - Data Loading', () => {
+  let wrapper: ReturnType<typeof mount>;
+
+  beforeEach(() => {
+    mockLoadData = vi.fn();
+    mockLoading.value = false;
+    mockError.value = null;
+    mockData.value = null;
+    mockHasData.value = false;
+    
+    wrapper = mount(AstronomyScene);
+  });
+
+  it('should display loading state', async () => {
+    mockLoading.value = true;
+    await wrapper.vm.$nextTick();
+    
+    expect(wrapper.text()).toContain('Loading');
+  });
+
+  it('should display error message when error occurs', async () => {
+    mockError.value = 'Failed to load data';
+    await wrapper.vm.$nextTick();
+    
+    const vm = wrapper.vm as any;
+    expect(vm.error.value).toBe('Failed to load data');
+  });
+
+});
+
+describe('AstronomyScene - With Data Loaded', () => {
+  let wrapper: ReturnType<typeof mount>;
+
+  beforeEach(() => {
+    mockLoadData = vi.fn();
+    mockLoading.value = false;
+    mockError.value = null;
+    mockData.value = {
+      frames: [
+        {
+          datetime: '2026-02-02T00:00:00',
+          sun: { altitude: 15.5, azimuth: 120.0, is_visible: true },
+          moon: { altitude: 45.2, azimuth: 230.5, is_visible: true },
+          moon_phase: { illumination: 0.75, phase_angle: 90.0, phase_name: 'Waxing Gibbous' },
+        },
+        {
+          datetime: '2026-02-02T01:00:00',
+          sun: { altitude: 20.0, azimuth: 125.0, is_visible: true },
+          moon: { altitude: 40.0, azimuth: 235.0, is_visible: true },
+          moon_phase: { illumination: 0.76, phase_angle: 91.0, phase_name: 'Waxing Gibbous' },
+        },
+      ],
+      metadata: {
+        location: { latitude: 51.5, longitude: -0.1, elevation: 0 },
+        frame_count: 2,
+        start_datetime: '2026-02-02T00:00:00',
+        end_datetime: '2026-02-02T01:00:00',
+        time_span_hours: 1.0,
+      },
+    };
+    mockHasData.value = true;
+    
+    wrapper = mount(AstronomyScene);
+  });
+
+  it('should show animation controls when data is loaded', async () => {
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.animation-controls').exists()).toBe(true);
+  });
+
+  it('should display frame count', async () => {
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Frames:');
+  });
+
+  it('should have view toggle buttons', async () => {
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('3D View');
+    expect(wrapper.text()).toContain('Sky View');
+  });
+
+  it('should have play/pause button', async () => {
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toMatch(/Play|Pause/);
+  });
+
+  it('should have reset button', async () => {
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Reset');
+  });
+
+});
+
