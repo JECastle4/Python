@@ -12,12 +12,12 @@ const createMockCanvas = (): HTMLCanvasElement => {
   
   // Mock getContext to return a minimal WebGL context
   const originalGetContext = canvas.getContext.bind(canvas);
-  canvas.getContext = function(type: string, options?: any) {
+  canvas.getContext = function(type: string, _options?: any) {
     if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
-      return originalGetContext('2d', options); // Return 2D context as fallback for tests
+      return originalGetContext('2d', _options); // Return 2D context as fallback for tests
     }
-    return originalGetContext(type, options);
-  };
+    return originalGetContext(type, _options);
+  } as any;
   
   return canvas;
 };

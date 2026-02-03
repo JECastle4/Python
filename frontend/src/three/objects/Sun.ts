@@ -11,9 +11,7 @@ export class Sun {
     // Create sun geometry
     const geometry = new THREE.SphereGeometry(0.5, 32, 32);
     const material = new THREE.MeshBasicMaterial({
-      color: 0xffaa00,
-      emissive: 0xffaa00,
-      emissiveIntensity: 1.0,
+      color: 0xffdd44
     });
 
     this.mesh = new THREE.Mesh(geometry, material);

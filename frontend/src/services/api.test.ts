@@ -9,7 +9,7 @@ describe('AstronomyApiClient', () => {
   beforeEach(() => {
     client = new AstronomyApiClient();
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
+    global.fetch = fetchMock as any;
   });
 
   afterEach(() => {
@@ -116,7 +116,7 @@ describe('AstronomyApiClient', () => {
 
       // Mock fetch to properly handle abort signal
       fetchMock.mockImplementationOnce((_url: string, options: any) => {
-        return new Promise((resolve, reject) => {
+        return new Promise((_resolve, reject) => {
           const signal = options?.signal as AbortSignal;
           if (signal) {
             // Listen for the abort event from the timeout

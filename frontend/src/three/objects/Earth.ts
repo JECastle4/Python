@@ -40,7 +40,6 @@ export class Earth {
     
     // Create altitude circles (elevation rings)
     for (let alt = 0; alt <= 90; alt += 15) {
-      const altRad = alt * Math.PI / 180;
       const r = radius * Math.sin((90 - alt) * Math.PI / 180);
       const y = radius * Math.cos((90 - alt) * Math.PI / 180);
       
