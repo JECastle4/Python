@@ -19,8 +19,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",  # Alternative localhost
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],  # Only methods used by the API
+    allow_headers=["Content-Type", "Accept"],  # Standard headers for JSON API
 )
 
 # Include the routes
