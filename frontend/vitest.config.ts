@@ -24,6 +24,7 @@ export default defineConfig({
         'dist/',
         'src/three/scene.ts',     // Requires WebGL/GPU context, covered by E2E tests
         'src/services/config.ts', // Production validation code (environment-dependent)
+        'src/components/AstronomyScene.vue', // Complex Three.js component - validation tested, rendering needs E2E
       ],
       all: true,
       // Per-file coverage thresholds enforce high coverage on business logic
