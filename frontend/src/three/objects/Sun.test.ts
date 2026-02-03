@@ -17,7 +17,7 @@ describe('Sun', () => {
 
     it('should have sun material with correct color', () => {
       const material = sun.mesh.material as THREE.MeshBasicMaterial;
-      expect(material.color.getHex()).toBe(0xffaa00);
+      expect(material.color.getHex()).toBe(0xffdd44);
       expect(material).toBeInstanceOf(THREE.MeshBasicMaterial);
     });
 
