@@ -144,16 +144,11 @@ jobs:
     
     - name: Run tests with coverage
       run: npm run test:coverage -- --run
-    
-    - name: Check coverage thresholds
-      run: |
-        # Extract branch coverage from vitest output
-        # The v8 coverage report shows: | % Branch |
-        # We want to ensure it's >= 80%
-        echo "Branch coverage requirement: >= 80%"
-        npm run test:coverage -- --run --reporter=json --outputFile=coverage-summary.json
-        
-        # For now, tests must pass. Coverage enforcement via vitest.config.ts thresholds
+      # Coverage thresholds enforced by vitest.config.ts:
+      # - branches: 80%
+      # - lines: 45%
+      # - functions: 65%
+      # - statements: 45%
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
