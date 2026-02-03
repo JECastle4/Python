@@ -14,15 +14,20 @@ app = FastAPI(
 
 # Configure CORS with environment-specific settings
 # For production, set ALLOWED_ORIGINS environment variable to comma-separated list of domains
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173"  # Default for local development
-).split(",")
+# Example: ALLOWED_ORIGINS="https://yourdomain.com, https://www.yourdomain.com"
+allowed_origins = [
+    origin.strip() 
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173"  # Default for local development
+    ).split(",")
+    if origin.strip()  # Filter out empty strings
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=False,  # No authentication required
     allow_methods=["GET", "POST"],  # Only methods used by the API
     allow_headers=["Content-Type", "Accept"],  # Standard headers for JSON API
 )

@@ -157,6 +157,10 @@ jobs:
         files: ./frontend/coverage/coverage-final.json
         flags: frontend
         name: codecov-frontend
+      # TODO: Remove continue-on-error once Codecov integration is stable
+      # Currently prevents CI failures from Codecov service issues, but
+      # means upload failures won't be visible. Monitor upload success in
+      # Codecov dashboard and remove this flag after confirming reliability.
       continue-on-error: true
     
     - name: Upload coverage artifacts
