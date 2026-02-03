@@ -44,8 +44,8 @@ vi.mock('@/three/objects/Moon', () => ({
 // Mock composable - will be customized per test
 let mockLoadData = vi.fn();
 let mockLoading = { value: false };
-let mockError = { value: null };
-let mockData = { value: null };
+let mockError: { value: string | null } = { value: null };
+let mockData: { value: any } = { value: null };
 let mockHasData = { value: false };
 
 vi.mock('@/composables/useAstronomyData', () => ({
