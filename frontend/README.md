@@ -43,8 +43,29 @@ src/
 
 ## Configuration
 
-Environment variables:
-- `.env.local` - Local development (git-ignored)
-- `.env.production` - Production deployment
+### Environment Variables
 
-Set `VITE_API_BASE_URL` to your API endpoint.
+The application uses environment variables for API configuration:
+
+**Development (.env.local)**
+Create a `.env.local` file for local development (git-ignored):
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**Production (.env.production)**
+For production deployment, use the provided template:
+```bash
+# Copy the example file
+cp .env.production.example .env.production
+
+# Edit with your production API URL
+# Example: VITE_API_BASE_URL=https://api.yourdomain.com
+```
+
+The `.env.production.example` file contains detailed deployment instructions.
+
+**Default Behavior:**
+- If `VITE_API_BASE_URL` is not set, defaults to `http://localhost:8000`
+- Production builds will warn if using http instead of https
+- Production builds will warn if environment variable is missing

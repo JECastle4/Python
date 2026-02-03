@@ -4,8 +4,31 @@ import type { ApiConfig } from '@/types/api.types';
  * API Configuration
  * Uses environment variables for different deployment environments
  */
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// Validate configuration in production mode
+if (!import.meta.env.DEV) {
+  if (!import.meta.env.VITE_API_BASE_URL) {
+    console.warn(
+      '⚠️ PRODUCTION WARNING: VITE_API_BASE_URL not set! Using default localhost:8000. ' +
+      'This will not work in production. Set VITE_API_BASE_URL in .env.production'
+    );
+  }
+  if (baseUrl.startsWith('http://')) {
+    console.warn(
+      '⚠️ SECURITY WARNING: API base URL uses insecure http protocol in production! ' +
+      `Current URL: ${baseUrl}. Use https for production deployments.`
+    );
+  }
+}
+
+// TODO (#14): Improve loading UX with per-endpoint timeouts and progress indicators
+// - Batch operations: Keep 30s timeout but add progress/spinner
+// - Single operations: Reduce to 10-15s timeout
+// - Consider streaming/chunked responses for large batches
+// - Add request cancellation capability
 export const API_CONFIG: ApiConfig = {
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  baseUrl,
   timeout: 30000,
 };
 

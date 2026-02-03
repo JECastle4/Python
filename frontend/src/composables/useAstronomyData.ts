@@ -37,7 +37,10 @@ export function useAstronomyData() {
       } else {
         error.value = 'An unknown error occurred';
       }
-      console.error('Failed to fetch astronomy data:', err);
+      // Console logging only in development - see issue #13 for production error monitoring
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch astronomy data:', err);
+      }
     } finally {
       loading.value = false;
     }

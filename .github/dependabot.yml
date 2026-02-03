@@ -1,5 +1,8 @@
 # Dependabot configuration for automated dependency updates
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Note: Reviewer username (JECastle4) is hardcoded as repository owner.
+# If transferring repository ownership, update all reviewer fields below.
 
 version: 2
 updates:
@@ -12,7 +15,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "JECastle4"
+      - "JECastle4"  # Repository owner (update if ownership changes)
     labels:
       - "dependencies"
       - "python"
@@ -44,7 +47,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "JECastle4"
+      - "JECastle4"  # Repository owner (update if ownership changes)
     labels:
       - "dependencies"
       - "frontend"
@@ -86,7 +89,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "JECastle4"
+      - "JECastle4"  # Repository owner (update if ownership changes)
     labels:
       - "dependencies"
       - "github-actions"

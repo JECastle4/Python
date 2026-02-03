@@ -22,20 +22,46 @@ export default defineConfig({
         'src/vite-env.d.ts',
         '**/*.config.ts',
         'dist/',
+        'src/three/scene.ts',     // Requires WebGL/GPU context, covered by E2E tests
+        'src/services/config.ts', // Production validation code (environment-dependent)
       ],
       all: true,
-      // Coverage thresholds explanation:
-      // - Low thresholds (45-65%) account for scene.ts (0% - requires WebGL/GPU context)
-      // - Business logic (API client, composables, Three.js objects) has 100% coverage
-      // - Branch coverage (80%) is the primary quality gate
-      // - E2E tests (Playwright) will cover scene rendering and integration testing
-      // TODO: Gradually increase thresholds as E2E tests are added:
-      //   - Target: lines 70%, functions 80%, statements 70% after E2E implementation
-      //   - Consider per-file coverage requirements for critical business logic
-      lines: 45,        // Current: 48.14%
-      functions: 65,    // Current: 66.66%
-      branches: 80,     // Current: 89.47% - PRIMARY GATE
-      statements: 45,   // Current: 48.14%
+      // Per-file coverage thresholds enforce high coverage on business logic
+      // scene.ts excluded from coverage (requires WebGL/GPU context)
+      thresholds: {
+        // Global thresholds
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+        
+        // Per-file thresholds enforce high standards on business logic
+        perFile: true,
+        'src/services/api.ts': {
+          lines: 95,
+          functions: 100,
+          branches: 80,      // Current: 80%, keep as-is
+          statements: 95,
+        },
+        'src/services/config.ts': {
+          lines: 50,         // Production validation not tested
+          functions: 100,
+          branches: 25,      // Production validation branches
+          statements: 50,
+        },
+        'src/composables/**': {
+          lines: 100,
+          functions: 100,
+          branches: 87,      // Current: 87.5%, allow slight margin
+          statements: 100,
+        },
+        'src/three/objects/**': {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100,
+        },
+      },
     },
   },
 })

@@ -112,6 +112,7 @@ const isAnimating = ref(false);
 const animationSpeed = ref(1.0);
 const currentIndex = ref(0);
 const viewMode = ref<'3D' | 'SKY'>('3D');
+const lastTime = ref(0);
 
 // API data
 const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
@@ -122,12 +123,13 @@ const { data, loading, error, hasData, frameCount, fetchBatchObservations, clear
 //   - Astronomical events (dawn, dusk, twilight periods)
 //   - User's timezone
 //   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
+// TODO (#10): Replace hardcoded dates with relative/dynamic dates
 const params = ref({
   latitude: 51.5,
   longitude: -0.1,
-  start_date: '2026-02-02',
+  start_date: '2026-02-02',  // Hardcoded - see issue #10
   start_time: '00:00:00',
-  end_date: '2026-02-03',
+  end_date: '2026-02-03',  // Hardcoded - see issue #10
   end_time: '00:00:00',
   frame_count: 48,
 });
@@ -209,16 +211,15 @@ function setViewMode(mode: '3D' | 'SKY') {
 }
 
 // Animation loop callback
-let lastTime = 0;
 function updateAnimation() {
   if (!isAnimating.value || !data.value) return;
   
   const now = Date.now();
-  const delta = now - lastTime;
+  const delta = now - lastTime.value;
   
   // Update every ~100ms scaled by speed
   if (delta > 100 / animationSpeed.value) {
-    lastTime = now;
+    lastTime.value = now;
     currentIndex.value++;
     
     if (currentIndex.value >= data.value.frames.length) {
@@ -232,7 +233,7 @@ function updateAnimation() {
 function toggleAnimation() {
   isAnimating.value = !isAnimating.value;
   if (isAnimating.value) {
-    lastTime = Date.now();
+    lastTime.value = Date.now();
   }
 }
 

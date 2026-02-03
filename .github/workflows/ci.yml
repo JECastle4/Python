@@ -84,6 +84,8 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Run Trivy vulnerability scanner - Python dependencies
+      # Using @master instead of pinned version to get latest vulnerability definitions
+      # Security scanners should stay current; breaking changes are rare and acceptable tradeoff
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
@@ -94,6 +96,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
     
     - name: Run Trivy vulnerability scanner - npm dependencies
+      # Using @master for same reason as above - latest security definitions
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
@@ -157,10 +160,10 @@ jobs:
         files: ./frontend/coverage/coverage-final.json
         flags: frontend
         name: codecov-frontend
-      # TODO: Remove continue-on-error once Codecov integration is stable
-      # Currently prevents CI failures from Codecov service issues, but
-      # means upload failures won't be visible. Monitor upload success in
-      # Codecov dashboard and remove this flag after confirming reliability.
+      # TODO (#7): Remove continue-on-error after Codecov stability verified
+      # Currently prevents CI failures from Codecov service issues, but means upload
+      # failures won't be visible. Monitor Codecov dashboard for 10+ successful uploads,
+      # then remove this flag and close issue #7.
       continue-on-error: true
     
     - name: Upload coverage artifacts

@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useAstronomyData } from '@/composables/useAstronomyData';
 import { astronomyApi, ApiError } from '@/services/api';
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
 // Mock the API module
+// TODO (#12): Consider refactoring to use dependency injection or vi.doMock() for better test isolation
+// Module-level mocks persist across test files, which can cause test pollution
 vi.mock('@/services/api', () => ({
   astronomyApi: {
     getBatchEarthObservations: vi.fn(),
@@ -43,6 +45,10 @@ describe('useAstronomyData', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should initialize with correct default state', () => {
