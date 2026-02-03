@@ -47,6 +47,9 @@ bandit-report.json
 .DS_Store
 Thumbs.db
 
+# Frontend
+.vite/
+
 # Project specific
 test_batch_output.txt
 OPTIMIZATION_NOTES.md
