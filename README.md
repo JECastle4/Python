@@ -26,3 +26,6 @@ Initial API layer
 - Moon position
 - Moon phase
 Enough for 1 frame on the Earth bound animation.
+
+4/2/2025
+E2E test
