@@ -18,6 +18,12 @@ dist-ssr
 # Test coverage
 coverage
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+# Note: Golden screenshots (tests/e2e/*.spec.ts-snapshots/) should be committed
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

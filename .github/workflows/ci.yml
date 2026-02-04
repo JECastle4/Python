@@ -171,3 +171,11 @@ jobs:
       with:
         name: frontend-coverage
         path: frontend/coverage/
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    - name: Run Playwright E2E tests
+      run: npm run test:e2e
+      env:
+        CI: true
