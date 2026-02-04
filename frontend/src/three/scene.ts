@@ -100,7 +100,7 @@ export class SceneManager {
   
   public setViewMode(mode: '3D' | 'SKY'): void {
     this.currentViewMode = mode;
-    
+
     if (mode === '3D') {
       // 3D orbital view
       this.camera.position.set(0, 7, 14);
@@ -109,19 +109,39 @@ export class SceneManager {
       this.controls.maxDistance = 50;
       this.scene.background = new THREE.Color(0x000011);
     } else {
-      // Sky view: camera at ground level looking straight up
-      // TODO (#26): Sky view zoom default not applying correctly when toggling views
-      // Camera position should reset to default zoom level on view switch
-      // Set limits first
-      this.controls.minDistance = 0.1;
-      this.controls.maxDistance = 80;  // Allow zooming out much further
-      // Position camera and target - distance between them determines the zoom level
-      this.camera.position.set(0, 0.1, 0);
-      this.controls.target.set(0, 35, 0);  // Starting point - user can zoom in/out
+      // Sky view: camera below dome, looking up, so full 360° dome is visible (responsive)
+      const domeRadius = 30; // adjust if your dome is a different size
+      const domeHeight = domeRadius; // for a hemisphere centered at (0, domeRadius, 0)
+      const canvas = this.renderer.domElement;
+      const aspect = canvas.clientWidth / canvas.clientHeight;
+      const verticalFovRad = this.camera.fov * Math.PI / 180;
+      const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * aspect);
+      const limitingFov = Math.min(verticalFovRad, horizontalFovRad);
+      let distance = domeRadius / Math.tan(limitingFov / 2);
+      distance *= 1.1; // safety margin
+
+      var loggingEnabled = false; // set to true to enable debug logging
+      if (loggingEnabled) {
+        // Debug logging for geometry and camera setup
+        console.log('[SkyView] domeRadius:', domeRadius);
+        console.log('[SkyView] aspect:', aspect);
+        console.log('[SkyView] verticalFovDeg:', this.camera.fov);
+        console.log('[SkyView] verticalFovRad:', verticalFovRad);
+        console.log('[SkyView] horizontalFovRad:', horizontalFovRad);
+        console.log('[SkyView] calculated distance:', distance);
+        console.log('[SkyView] camera.position:', { x: 0, y: domeHeight - distance, z: 0 });
+        console.log('[SkyView] controls.target:', { x: 0, y: domeHeight, z: 0 });
+        }
+      
+      // Place camera below the dome, looking up at the center
+      this.camera.position.set(0, domeHeight - distance, 0);
+      this.controls.target.set(0, domeHeight, 0);
+      this.controls.minDistance = 1;
+      this.controls.maxDistance = 2 * distance;
       this.controls.enablePan = true;
       this.scene.background = new THREE.Color(0x001133);
     }
-    
+
     // Force controls to update with new limits and target
     this.controls.update();
   }
