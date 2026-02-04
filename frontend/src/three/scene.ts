@@ -27,7 +27,7 @@ export class SceneManager {
       0.1,
       1000
     );
-    this.camera.position.set(0, 5, 10);
+    this.camera.position.set(0, 7, 14);
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -103,21 +103,26 @@ export class SceneManager {
     
     if (mode === '3D') {
       // 3D orbital view
-      this.camera.position.set(0, 5, 10);
+      this.camera.position.set(0, 7, 14);
       this.controls.target.set(0, 0, 0);
       this.controls.minDistance = 2;
       this.controls.maxDistance = 50;
       this.scene.background = new THREE.Color(0x000011);
     } else {
       // Sky view: camera at ground level looking straight up
-      this.camera.position.set(0, 0.1, 0);
-      this.controls.target.set(0, 10, 0);
+      // TODO (#26): Sky view zoom default not applying correctly when toggling views
+      // Camera position should reset to default zoom level on view switch
+      // Set limits first
       this.controls.minDistance = 0.1;
-      this.controls.maxDistance = 20;
+      this.controls.maxDistance = 80;  // Allow zooming out much further
+      // Position camera and target - distance between them determines the zoom level
+      this.camera.position.set(0, 0.1, 0);
+      this.controls.target.set(0, 35, 0);  // Starting point - user can zoom in/out
       this.controls.enablePan = true;
       this.scene.background = new THREE.Color(0x001133);
     }
     
+    // Force controls to update with new limits and target
     this.controls.update();
   }
   

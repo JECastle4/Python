@@ -10,6 +10,10 @@ export default defineConfig({
     },
   },
   test: {
+    exclude: [
+      'tests/e2e/**', // Exclude Playwright E2E tests from Vitest
+      'node_modules/meshoptimizer/*.test.js', // Exclude meshoptimizer test files
+    ],
     globals: true,
     environment: 'happy-dom',
     coverage: {
@@ -25,6 +29,7 @@ export default defineConfig({
         'src/three/scene.ts',     // Requires WebGL/GPU context, covered by E2E tests
         'src/services/config.ts', // Production validation code (environment-dependent)
         'src/components/AstronomyScene.vue', // Complex Three.js component - validation tested, rendering needs E2E
+        'tests/e2e/**/*.ts', // Exclude Playwright E2E tests from Vitest
       ],
       all: true,
       // Per-file coverage thresholds enforce high coverage on business logic

@@ -158,6 +158,7 @@ const { data, loading, error, hasData, frameCount, fetchBatchObservations, clear
 //   - User's timezone
 //   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
 // TODO (#10): Replace hardcoded dates with relative/dynamic dates
+// test
 const params = ref({
   latitude: 51.5,
   longitude: -0.1,

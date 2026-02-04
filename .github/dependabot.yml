@@ -4,7 +4,6 @@
 # Note: Reviewer username (JECastle4) is hardcoded as repository owner.
 # If transferring repository ownership, update all reviewer fields below.
 #
-# TODO (#15): Consider removing/archiving scene.test.ts skipped tests once E2E testing strategy is implemented.
 # Skipped tests document the testing gap but add maintenance burden.
 
 version: 2
