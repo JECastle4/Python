@@ -1,3 +1,9 @@
+    - name: Upload Playwright test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: playwright-test-results
+        path: frontend/test-results/
 name: CI - Tests & Security
 
 on:
