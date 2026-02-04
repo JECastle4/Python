@@ -148,19 +148,20 @@ jobs:
       with:
         python-version: '3.14'
 
-    - name: Install FastAPI backend dependencies
+    - name: Install backend dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install -r requirements.txt
         pip install fastapi uvicorn
-        if [ -f requirements.txt ]; then pip install -r ../requirements.txt; fi
-      working-directory: ../
+        if [ -f pyproject.toml ]; then pip install -e .; fi
+      working-directory: .
 
     - name: Start FastAPI backend
       run: |
         uvicorn api.main:app --host 127.0.0.1 --port 8000 &
         sleep 5
         curl --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:8000/docs
-      working-directory: ../
+      working-directory: .
     
     - name: Type check
       run: npm run type-check
