@@ -24,7 +24,7 @@ allowed_origins = [
     origin.strip() 
     for origin in os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173"  # Default for local development
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"  # Default for local development
     ).split(",")
     if origin.strip()  # Filter out empty strings
 ]
