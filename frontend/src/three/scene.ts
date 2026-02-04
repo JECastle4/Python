@@ -119,15 +119,19 @@ export class SceneManager {
       const limitingFov = Math.min(verticalFovRad, horizontalFovRad);
       let distance = domeRadius / Math.tan(limitingFov / 2);
       distance *= 1.1; // safety margin
-      // Debug logging for geometry and camera setup
-      console.log('[SkyView] domeRadius:', domeRadius);
-      console.log('[SkyView] aspect:', aspect);
-      console.log('[SkyView] verticalFovDeg:', this.camera.fov);
-      console.log('[SkyView] verticalFovRad:', verticalFovRad);
-      console.log('[SkyView] horizontalFovRad:', horizontalFovRad);
-      console.log('[SkyView] calculated distance:', distance);
-      console.log('[SkyView] camera.position:', { x: 0, y: domeHeight - distance, z: 0 });
-      console.log('[SkyView] controls.target:', { x: 0, y: domeHeight, z: 0 });
+
+      var loggingEnabled = false; // set to true to enable debug logging
+      if (loggingEnabled) {
+        // Debug logging for geometry and camera setup
+        console.log('[SkyView] domeRadius:', domeRadius);
+        console.log('[SkyView] aspect:', aspect);
+        console.log('[SkyView] verticalFovDeg:', this.camera.fov);
+        console.log('[SkyView] verticalFovRad:', verticalFovRad);
+        console.log('[SkyView] horizontalFovRad:', horizontalFovRad);
+        console.log('[SkyView] calculated distance:', distance);
+        console.log('[SkyView] camera.position:', { x: 0, y: domeHeight - distance, z: 0 });
+        console.log('[SkyView] controls.target:', { x: 0, y: domeHeight, z: 0 });
+        }
       
       // Place camera below the dome, looking up at the center
       this.camera.position.set(0, domeHeight - distance, 0);
