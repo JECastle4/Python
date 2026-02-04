@@ -358,3 +358,280 @@ describe('AstronomyScene - With Data Loaded', () => {
 
 });
 
+describe('AstronomyScene - Frame Interval Calculation', () => {
+  let wrapper: ReturnType<typeof mount>;
+
+  beforeEach(() => {
+    // Reset mock state
+    mockFetchBatchObservations = vi.fn();
+    mockLoading.value = false;
+    mockError.value = null;
+    mockData.value = null;
+    mockHasData.value = false;
+    
+    wrapper = mount(AstronomyScene);
+  });
+
+  describe('calculateFrameInterval with valid data', () => {
+    it('should calculate interval correctly for 1-hour spacing', async () => {
+      const vm = wrapper.vm as any;
+      
+      // Set up data with 1-hour interval (2023-01-01 00:00:00 to 01:00:00)
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      // Trigger the calculation
+      vm.calculateFrameInterval();
+      
+      // 1 hour = 3600000ms, scaled down by (1000/3600000) = 1 second
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+
+    it('should calculate interval correctly for 30-minute spacing', async () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T00:30:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // 30 minutes = 1800000ms, scaled down = 500ms
+      expect(vm.frameIntervalMs).toBe(500);
+    });
+
+    it('should calculate interval correctly for 24-hour spacing', async () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-02T00:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // 24 hours = 86400000ms, scaled down = 24000ms (24 seconds)
+      expect(vm.frameIntervalMs).toBe(24000);
+    });
+
+    it('should enforce minimum interval of 50ms for very short time spans', async () => {
+      const vm = wrapper.vm as any;
+      
+      // Set up data with 1-minute interval (which scales to ~16.67ms, below minimum)
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T00:01:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // Should be clamped to minimum of 50ms
+      expect(vm.frameIntervalMs).toBe(50);
+    });
+  });
+
+  describe('calculateFrameInterval with invalid data', () => {
+    it('should use default interval when data is null', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = null;
+      mockHasData.value = false;
+      
+      vm.calculateFrameInterval();
+      
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+
+    it('should use default interval when frames array is empty', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = { frames: [] };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+
+    it('should use default interval when only one frame exists', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+
+    it('should handle malformed datetime strings gracefully', () => {
+      const vm = wrapper.vm as any;
+      
+      // Use strings that will definitely create invalid dates
+      mockData.value = {
+        frames: [
+          { datetime: '', sun: {}, moon: {} },
+          { datetime: 'not-a-valid-date-format', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // Should fall back to default interval
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+
+    it('should handle partially invalid datetime strings', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: 'not-a-valid-date', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // Should fall back to default interval
+      expect(vm.frameIntervalMs).toBe(1000);
+    });
+  });
+
+  describe('calculateFrameInterval with timestamp ordering issues', () => {
+    it('should handle frames with identical timestamps', () => {
+      const vm = wrapper.vm as any;
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // Should fall back to default interval and log warning
+      expect(vm.frameIntervalMs).toBe(1000);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Frame timestamps are not in chronological order or are identical. Using default interval.'
+      );
+      
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle frames in reverse chronological order', () => {
+      const vm = wrapper.vm as any;
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T02:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} }, // Earlier than first
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // Should fall back to default interval and log warning
+      expect(vm.frameIntervalMs).toBe(1000);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Frame timestamps are not in chronological order or are identical. Using default interval.'
+      );
+      
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('calculateFrameInterval scale factor verification', () => {
+    it('should correctly apply scale factor (1 real hour = 1 animation second)', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // 1 hour (3600000ms) / scale factor (3600000/1000) = 1000ms (1 second)
+      const MILLISECONDS_PER_SECOND = 1000;
+      const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+      const expectedInterval = (MILLISECONDS_PER_HOUR * MILLISECONDS_PER_SECOND) / MILLISECONDS_PER_HOUR;
+      
+      expect(vm.frameIntervalMs).toBe(expectedInterval);
+    });
+
+    it('should scale 6 hours to 6 seconds', () => {
+      const vm = wrapper.vm as any;
+      
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
+          { datetime: '2023-01-01T06:00:00Z', sun: {}, moon: {} },
+        ],
+      };
+      mockHasData.value = true;
+      
+      vm.calculateFrameInterval();
+      
+      // 6 hours = 21600000ms, scaled down = 6000ms (6 seconds)
+      expect(vm.frameIntervalMs).toBe(6000);
+    });
+  });
+
+  describe('calculateFrameInterval integration with loadData', () => {
+    it('should calculate correct interval when data is loaded', async () => {
+      const vm = wrapper.vm as any;
+      
+      // Set up the mock to simulate successful data fetch
+      mockFetchBatchObservations.mockResolvedValue(undefined);
+      
+      // Initially, frameIntervalMs should be the default
+      expect(vm.frameIntervalMs).toBe(1000);
+      
+      // Update mock data to simulate data being loaded
+      mockData.value = {
+        frames: [
+          { datetime: '2023-01-01T00:00:00Z', sun: { az: 0, alt: 0 }, moon: { az: 0, alt: 0 } },
+          { datetime: '2023-01-01T02:00:00Z', sun: { az: 0, alt: 0 }, moon: { az: 0, alt: 0 } },
+        ],
+      };
+      mockHasData.value = true;
+      
+      await vm.loadData();
+      await wrapper.vm.$nextTick();
+      
+      // After loading 2-hour interval data, should be 2000ms (2 hours scaled to 2 seconds)
+      expect(vm.frameIntervalMs).toBe(2000);
+    });
+  });
+});
+

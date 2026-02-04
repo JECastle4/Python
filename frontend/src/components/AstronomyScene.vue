@@ -245,12 +245,27 @@ function calculateFrameInterval() {
   const firstFrame = new Date(data.value.frames[0].datetime);
   const secondFrame = new Date(data.value.frames[1].datetime);
   
+  // Validate that the dates are valid
+  if (!isFinite(firstFrame.getTime()) || !isFinite(secondFrame.getTime())) {
+    frameIntervalMs.value = 1000; // Fall back to default if dates are invalid
+    return;
+  }
+  
   // Calculate the time difference in milliseconds
   const realTimeDiffMs = secondFrame.getTime() - firstFrame.getTime();
   
+  // Validate that the time difference is positive
+  if (realTimeDiffMs <= 0) {
+    console.warn('Frame timestamps are not in chronological order or are identical. Using default interval.');
+    frameIntervalMs.value = 1000; // Fall back to default if frames are out of order
+    return;
+  }
+  
   // Scale to a reasonable animation speed (e.g., 1 real hour = 1 second of animation)
   // This gives us a base speed that makes sense for visualization
-  const scaleFactor = 1000 / 3600000; // 1 second per hour
+  const MILLISECONDS_PER_SECOND = 1000;
+  const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+  const scaleFactor = MILLISECONDS_PER_SECOND / MILLISECONDS_PER_HOUR;
   frameIntervalMs.value = realTimeDiffMs * scaleFactor;
   
   // Ensure a minimum interval to prevent too-fast animations
