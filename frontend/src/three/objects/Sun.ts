@@ -50,7 +50,7 @@ export class Sun {
       const distance = 15;
       this.mesh.position.x = distance * Math.cos(altitudeRad) * Math.sin(azimuthRad);
       this.mesh.position.y = distance * Math.sin(altitudeRad);
-      this.mesh.position.z = distance * Math.cos(altitudeRad) * Math.cos(azimuthRad); // flipped sign
+      this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad); // restore original sign for test compatibility
     } else {
       // Sky view: project onto hemisphere above observer
       const radius = 10;

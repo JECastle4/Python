@@ -208,17 +208,17 @@ onMounted(() => {
     sun.addToScene(sceneManager.scene);
     moon.addToScene(sceneManager.scene);
     // Hide objects until data is loaded
-    if (earth) {
+    if (earth && earth.mesh && earth.gridHelper && earth.axesHelper && earth.hemisphereGrid) {
       earth.mesh.visible = false;
       earth.gridHelper.visible = false;
       earth.axesHelper.visible = false;
       earth.hemisphereGrid.visible = false;
     }
-    if (sun) {
+    if (sun && sun.mesh && sun.light) {
       sun.mesh.visible = false;
       sun.light.visible = false;
     }
-    if (moon) {
+    if (moon && moon.mesh) {
       moon.mesh.visible = false;
     }
     sceneManager.startAnimation(updateAnimation);

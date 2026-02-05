@@ -175,4 +175,44 @@ describe('Moon', () => {
       expect(scene.children).not.toContain(moon.mesh);
     });
   });
+
+  describe('edge cases and coverage', () => {
+    it('should use minimum disk radius if calculated is too small', () => {
+      const originalTan = Math.tan;
+      Math.tan = () => 0.00001;
+      const moon = new Moon();
+      Math.tan = originalTan;
+      const geometry = moon['skyViewGeometry'];
+      expect((geometry as THREE.SphereGeometry).parameters.radius).toBeGreaterThanOrEqual(0.2);
+    });
+
+    it('should switch geometry in setViewMode', () => {
+      const moon = new Moon();
+      moon.setViewMode('sky');
+      expect(moon.mesh.geometry).toBe(moon['skyViewGeometry']);
+      moon.setViewMode('3d');
+      expect(moon.mesh.geometry).toBe(moon['defaultGeometry']);
+    });
+
+    it('should handle updatePhase with edge illumination values', () => {
+      const moon = new Moon();
+      const material = moon.mesh.material as THREE.MeshStandardMaterial;
+      moon.updatePhase(0);
+      expect(material.emissiveIntensity).toBe(0);
+      moon.updatePhase(100);
+      expect(material.emissiveIntensity).toBe(1);
+    });
+
+    it('should use default geometry in setViewMode for non-sky', () => {
+      const moon = new Moon();
+      moon.setViewMode('3d');
+      expect(moon.mesh.geometry).toBe(moon['defaultGeometry']);
+    });
+    it('should default to defaultGeometry for invalid mode', () => {
+      const moon = new Moon();
+      // @ts-expect-error: testing invalid input
+      moon.setViewMode('invalid');
+      expect(moon.mesh.geometry).toBe(moon['defaultGeometry']);
+    });
+  });
 });
