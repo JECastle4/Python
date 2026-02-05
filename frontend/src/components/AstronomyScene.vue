@@ -201,19 +201,30 @@ const isFormValid = computed(() => {
 onMounted(() => {
   if (canvasRef.value) {
     sceneManager = new SceneManager(canvasRef.value);
-    
-    // Create celestial objects
     earth = new Earth();
     sun = new Sun();
     moon = new Moon();
-    
     earth.addToScene(sceneManager.scene);
     sun.addToScene(sceneManager.scene);
     moon.addToScene(sceneManager.scene);
-    
-    // Start render loop
+    // Hide objects until data is loaded
+    if (earth && earth.mesh && earth.getGridHelper() && earth.getAxesHelper() && earth.getHemisphereGrid()) {
+      earth.mesh.visible = false;
+      earth.getGridHelper().visible = false;
+      earth.getAxesHelper().visible = false;
+      earth.getHemisphereGrid().visible = false;
+    }
+    if (sun && sun.mesh && sun.getLight()) {
+      sun.mesh.visible = false;
+      sun.getLight().visible = false;
+    }
+    if (moon && moon.mesh) {
+      moon.mesh.visible = false;
+    }
     sceneManager.startAnimation(updateAnimation);
   }
+  // Add window resize event listener
+  window.addEventListener('resize', handleResize);
 });
 
 // Cleanup
@@ -221,6 +232,8 @@ onUnmounted(() => {
   if (sceneManager) {
     sceneManager.dispose();
   }
+  // Remove window resize event listener
+  window.removeEventListener('resize', handleResize);
 });
 
 // Load data from API
@@ -230,6 +243,23 @@ async function loadData() {
     currentIndex.value = 0;
     calculateFrameInterval();
     updatePositions();
+    // Set visibility for first frame from API data
+    const frame = currentFrame.value;
+    if (frame) {
+      if (earth) {
+        earth.mesh.visible = true;
+        earth.getGridHelper().visible = true;
+        earth.getAxesHelper().visible = true;
+        earth.getHemisphereGrid().visible = false;
+      }
+      if (sun) {
+        sun.mesh.visible = frame.sun.is_visible;
+        sun.getLight().visible = frame.sun.is_visible;
+      }
+      if (moon) {
+        moon.mesh.visible = frame.moon.is_visible;
+      }
+    }
   }
 }
 
@@ -278,30 +308,56 @@ function updatePositions() {
   const frame = currentFrame.value;
   if (!frame || !sun || !moon) return;
   
+  // Update visibility based on frame data
+  if (sun) {
+    // Only show sun in 3D view if above horizon
+    sun.mesh.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
+    sun.getLight().visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
+    if (viewMode.value === '3D') {
+      // Optionally: Only show sun in 3D if above horizon
+      sun.mesh.visible = frame.sun.is_visible;
+      sun.getLight().visible = frame.sun.is_visible;
+    } else {
+      sun.mesh.visible = frame.sun.is_visible;
+      sun.getLight().visible = frame.sun.is_visible;
+    }
+  }
+  if (moon) {
+    moon.mesh.visible = frame.moon.is_visible;
+  }
+  if (earth) {
+    // Earth is always visible during animation
+    earth.mesh.visible = true;
+    earth.getGridHelper().visible = true;
+    earth.getAxesHelper().visible = true;
+    earth.getHemisphereGrid().visible = (viewMode.value === 'SKY');
+  }
+
   sun.updatePosition(
     frame.sun.azimuth,
     frame.sun.altitude,
     frame.sun.is_visible,
     viewMode.value
   );
-  
+
   moon.updatePosition(
     frame.moon.azimuth,
     frame.moon.altitude,
     frame.moon.is_visible,
     viewMode.value
   );
-  
+
   moon.updatePhase(frame.moon_phase.illumination * 100);
 }
 
 // Switch view mode
 function setViewMode(mode: '3D' | 'SKY') {
   viewMode.value = mode;
-  
-  if (sceneManager && earth) {
+  if (sceneManager && earth && sun && moon) {
     sceneManager.setViewMode(mode);
     earth.setViewMode(mode);
+    sun.setViewMode(mode.toLowerCase() as 'sky' | '3d');
+    moon.setViewMode(mode.toLowerCase() as 'sky' | '3d');
     updatePositions();
   }
 }
@@ -340,21 +396,80 @@ function resetAnimation() {
   isAnimating.value = false;
   currentIndex.value = 0;
   updatePositions();
+  // Hide objects on reset
+  if (earth) {
+    earth.mesh.visible = false;
+    earth.getGridHelper().visible = false;
+    earth.getAxesHelper().visible = false;
+    earth.getHemisphereGrid().visible = false;
+  }
+  if (sun) {
+    sun.mesh.visible = false;
+    sun.getLight().visible = false;
+  }
+  if (moon) {
+    moon.mesh.visible = false;
+  }
 }
 
 function clearData() {
   isAnimating.value = false;
   currentIndex.value = 0;
   clearApiData();
+  // Hide objects on clear
+  if (earth) {
+    earth.mesh.visible = false;
+    earth.getGridHelper().visible = false;
+    earth.getAxesHelper().visible = false;
+    earth.getHemisphereGrid().visible = false;
+  }
+  if (sun) {
+    sun.mesh.visible = false;
+    sun.getLight().visible = false;
+  }
+  if (moon) {
+    moon.mesh.visible = false;
+  }
+}
+
+// Window resize event handler
+function handleResize() {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const parent = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const width = (parent?.clientWidth || window.innerWidth);
+  const height = (parent?.clientHeight || window.innerHeight);
+  // Set canvas rendering size for high-DPI
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  // Set CSS size
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  // Update Three.js renderer and camera if available
+  if (sceneManager) {
+    sceneManager.renderer.setSize(width, height, false);
+    sceneManager.camera.aspect = width / height;
+    sceneManager.camera.updateProjectionMatrix();
+  }
 }
 </script>
 
 <style scoped>
 .astronomy-scene {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 canvas {

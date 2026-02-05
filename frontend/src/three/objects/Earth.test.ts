@@ -167,4 +167,16 @@ describe('Earth', () => {
       expect(earth['gridHelper']).toBeDefined();
     });
   });
+
+  describe('getter coverage', () => {
+    it('getGridHelper should return a GridHelper', () => {
+      expect(earth.getGridHelper()).toBeInstanceOf(THREE.GridHelper);
+    });
+    it('getAxesHelper should return an AxesHelper', () => {
+      expect(earth.getAxesHelper()).toBeInstanceOf(THREE.AxesHelper);
+    });
+    it('getHemisphereGrid should return a Group', () => {
+      expect(earth.getHemisphereGrid()).toBeInstanceOf(THREE.Group);
+    });
+  });
 });

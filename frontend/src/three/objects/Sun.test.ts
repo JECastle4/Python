@@ -175,4 +175,42 @@ describe('Sun', () => {
       expect(scene.children).not.toContain(sun.mesh);
     });
   });
+
+  describe('edge cases and coverage', () => {
+    it('should use minimum disk radius if calculated is too small', () => {
+      const originalTan = Math.tan;
+      Math.tan = () => 0.00001;
+      const sun = new Sun();
+      Math.tan = originalTan;
+      const geometry = sun['skyViewGeometry'];
+      expect((geometry as THREE.SphereGeometry).parameters.radius).toBeGreaterThanOrEqual(0.2);
+    });
+
+    it('should switch geometry in setViewMode', () => {
+      const sun = new Sun();
+      sun.setViewMode('sky');
+      expect(sun.mesh.geometry).toBe(sun['skyViewGeometry']);
+      sun.setViewMode('3d');
+      expect(sun.mesh.geometry).toBe(sun['defaultGeometry']);
+    });
+  });
+
+  describe('getter coverage', () => {
+    it('getLight should return a PointLight', () => {
+      const sun = new Sun();
+      expect(sun.getLight()).toBeInstanceOf(THREE.PointLight);
+    });
+  });
+
+  it('should use default geometry in setViewMode for non-sky', () => {
+    const sun = new Sun();
+    sun.setViewMode('3d');
+    expect(sun.mesh.geometry).toBe(sun['defaultGeometry']);
+  });
+  it('should default to defaultGeometry for invalid mode', () => {
+    const sun = new Sun();
+    // @ts-expect-error: testing invalid input
+    sun.setViewMode('invalid');
+    expect(sun.mesh.geometry).toBe(sun['defaultGeometry']);
+  });
 });

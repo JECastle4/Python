@@ -112,4 +112,14 @@ export class Earth {
     scene.remove(this.axesHelper);
     scene.remove(this.hemisphereGrid);
   }
+  // Public getters for test access
+  public getGridHelper(): THREE.GridHelper {
+    return this.gridHelper;
+  }
+  public getAxesHelper(): THREE.AxesHelper {
+    return this.axesHelper;
+  }
+  public getHemisphereGrid(): THREE.Group {
+    return this.hemisphereGrid;
+  }
 }

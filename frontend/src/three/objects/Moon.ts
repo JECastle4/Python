@@ -5,18 +5,30 @@ import * as THREE from 'three';
  */
 export class Moon {
   public mesh: THREE.Mesh;
+  private skyViewGeometry: THREE.SphereGeometry;
+  private defaultGeometry: THREE.SphereGeometry;
 
   constructor() {
-    // Create moon geometry
-    const geometry = new THREE.SphereGeometry(0.3, 32, 32);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
-      roughness: 0.9,
-      metalness: 0.1,
-    });
-
-    this.mesh = new THREE.Mesh(geometry, material);
+    // Default size for 3D view
+    this.defaultGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    // Sky view size (exaggerated for visibility)
+    const domeRadius = 10;
+    const moonAngularDiameterRad = 0.009; // ~0.5 degrees in radians
+    let moonDiskRadius = domeRadius * Math.tan(moonAngularDiameterRad / 2) * 4; // exaggerate by 4x
+    if (moonDiskRadius < 0.2) moonDiskRadius = 0.2;
+    this.skyViewGeometry = new THREE.SphereGeometry(moonDiskRadius, 32, 32);
+    // Use MeshStandardMaterial for test compatibility
+    const material = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9, metalness: 0.1 });
+    this.mesh = new THREE.Mesh(this.defaultGeometry, material);
     this.mesh.name = 'moon';
+  }
+
+  setViewMode(mode: '3d' | 'sky') {
+    if (mode === 'sky') {
+      this.mesh.geometry = this.skyViewGeometry;
+    } else {
+      this.mesh.geometry = this.defaultGeometry;
+    }
   }
 
   /**
@@ -33,7 +45,7 @@ export class Moon {
       const distance = 8;
       this.mesh.position.x = distance * Math.cos(altitudeRad) * Math.sin(azimuthRad);
       this.mesh.position.y = distance * Math.sin(altitudeRad);
-      this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+      this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad); // restore original sign for test compatibility
     } else {
       // Sky view: project onto hemisphere above observer
       const radius = 10;

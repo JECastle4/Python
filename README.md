@@ -27,5 +27,10 @@ Initial API layer
 - Moon phase
 Enough for 1 frame on the Earth bound animation.
 
-4/2/2025
+4/2/2026
 E2E test
+
+5/2/2026
+Windows size changes affects the canvas sizing.
+Sizes of objects and default view settings updated.
+Visibility of objects on the parameters and animation views corrected.

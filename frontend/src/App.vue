@@ -13,6 +13,14 @@ import AstronomyScene from '@/components/AstronomyScene.vue';
   box-sizing: border-box;
 }
 
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, sans-serif;
@@ -22,7 +30,9 @@ body {
 
 #app {
   width: 100%;
-  height: 100vh;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
 }
 </style>
