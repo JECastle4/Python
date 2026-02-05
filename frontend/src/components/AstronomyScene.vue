@@ -207,6 +207,20 @@ onMounted(() => {
     earth.addToScene(sceneManager.scene);
     sun.addToScene(sceneManager.scene);
     moon.addToScene(sceneManager.scene);
+    // Hide objects until data is loaded
+    if (earth) {
+      earth.mesh.visible = false;
+      earth.gridHelper.visible = false;
+      earth.axesHelper.visible = false;
+      earth.hemisphereGrid.visible = false;
+    }
+    if (sun) {
+      sun.mesh.visible = false;
+      sun.light.visible = false;
+    }
+    if (moon) {
+      moon.mesh.visible = false;
+    }
     sceneManager.startAnimation(updateAnimation);
   }
   // Add window resize event listener
@@ -229,6 +243,23 @@ async function loadData() {
     currentIndex.value = 0;
     calculateFrameInterval();
     updatePositions();
+    // Set visibility for first frame from API data
+    const frame = currentFrame.value;
+    if (frame) {
+      if (earth) {
+        earth.mesh.visible = true;
+        earth.gridHelper.visible = true;
+        earth.axesHelper.visible = true;
+        earth.hemisphereGrid.visible = false;
+      }
+      if (sun) {
+        sun.mesh.visible = frame.sun.is_visible;
+        sun.light.visible = frame.sun.is_visible;
+      }
+      if (moon) {
+        moon.mesh.visible = frame.moon.is_visible;
+      }
+    }
   }
 }
 
@@ -277,20 +308,36 @@ function updatePositions() {
   const frame = currentFrame.value;
   if (!frame || !sun || !moon) return;
   
+  // Update visibility based on frame data
+  if (sun) {
+    sun.mesh.visible = frame.sun.is_visible;
+    sun.light.visible = frame.sun.is_visible;
+  }
+  if (moon) {
+    moon.mesh.visible = frame.moon.is_visible;
+  }
+  if (earth) {
+    // Earth is always visible during animation
+    earth.mesh.visible = true;
+    earth.gridHelper.visible = true;
+    earth.axesHelper.visible = true;
+    earth.hemisphereGrid.visible = (viewMode.value === 'SKY');
+  }
+
   sun.updatePosition(
     frame.sun.azimuth,
     frame.sun.altitude,
     frame.sun.is_visible,
     viewMode.value
   );
-  
+
   moon.updatePosition(
     frame.moon.azimuth,
     frame.moon.altitude,
     frame.moon.is_visible,
     viewMode.value
   );
-  
+
   moon.updatePhase(frame.moon_phase.illumination * 100);
 }
 
@@ -339,12 +386,40 @@ function resetAnimation() {
   isAnimating.value = false;
   currentIndex.value = 0;
   updatePositions();
+  // Hide objects on reset
+  if (earth) {
+    earth.mesh.visible = false;
+    earth.gridHelper.visible = false;
+    earth.axesHelper.visible = false;
+    earth.hemisphereGrid.visible = false;
+  }
+  if (sun) {
+    sun.mesh.visible = false;
+    sun.light.visible = false;
+  }
+  if (moon) {
+    moon.mesh.visible = false;
+  }
 }
 
 function clearData() {
   isAnimating.value = false;
   currentIndex.value = 0;
   clearApiData();
+  // Hide objects on clear
+  if (earth) {
+    earth.mesh.visible = false;
+    earth.gridHelper.visible = false;
+    earth.axesHelper.visible = false;
+    earth.hemisphereGrid.visible = false;
+  }
+  if (sun) {
+    sun.mesh.visible = false;
+    sun.light.visible = false;
+  }
+  if (moon) {
+    moon.mesh.visible = false;
+  }
 }
 
 // Window resize event handler
