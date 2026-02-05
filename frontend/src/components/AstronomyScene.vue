@@ -201,19 +201,16 @@ const isFormValid = computed(() => {
 onMounted(() => {
   if (canvasRef.value) {
     sceneManager = new SceneManager(canvasRef.value);
-    
-    // Create celestial objects
     earth = new Earth();
     sun = new Sun();
     moon = new Moon();
-    
     earth.addToScene(sceneManager.scene);
     sun.addToScene(sceneManager.scene);
     moon.addToScene(sceneManager.scene);
-    
-    // Start render loop
     sceneManager.startAnimation(updateAnimation);
   }
+  // Add window resize event listener
+  window.addEventListener('resize', handleResize);
 });
 
 // Cleanup
@@ -221,6 +218,8 @@ onUnmounted(() => {
   if (sceneManager) {
     sceneManager.dispose();
   }
+  // Remove window resize event listener
+  window.removeEventListener('resize', handleResize);
 });
 
 // Load data from API
@@ -347,14 +346,45 @@ function clearData() {
   currentIndex.value = 0;
   clearApiData();
 }
+
+// Window resize event handler
+function handleResize() {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const parent = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const width = (parent?.clientWidth || window.innerWidth);
+  const height = (parent?.clientHeight || window.innerHeight);
+  // Set canvas rendering size for high-DPI
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  // Set CSS size
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  // Update Three.js renderer and camera if available
+  if (sceneManager) {
+    sceneManager.renderer.setSize(width, height, false);
+    sceneManager.camera.aspect = width / height;
+    sceneManager.camera.updateProjectionMatrix();
+  }
+}
 </script>
 
 <style scoped>
 .astronomy-scene {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 canvas {

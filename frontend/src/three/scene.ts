@@ -66,9 +66,34 @@ export class SceneManager {
 
   private onWindowResize(): void {
     const canvas = this.renderer.domElement;
+    const parent = canvas.parentElement;
+    // Debug logging for app, scene, and canvas sizes
+    const appDiv = document.getElementById('app');
+    const sceneDiv = parent;
+    const debugLoggingEnabled = false; // set to true to enable debug logging
+    if (debugLoggingEnabled) {
+      console.log('[Resize Debug]');
+      if (appDiv) {
+        console.log('  #app:', appDiv.clientWidth, 'x', appDiv.clientHeight);
+      }
+      if (sceneDiv) {
+        console.log('  .astronomy-scene:', sceneDiv.clientWidth, 'x', sceneDiv.clientHeight);
+      }
+      console.log('  canvas:', canvas.width, 'x', canvas.height);
+    }
+    // Dynamically set canvas size to match parent/container
+    if (parent) {
+      canvas.width = parent.clientWidth;
+      canvas.height = parent.clientHeight;
+    }
+    // Update renderer and camera aspect
     this.camera.aspect = canvas.clientWidth / canvas.clientHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    // If in SKY view, recalculate camera position and controls
+    if (this.currentViewMode === 'SKY') {
+      this.setViewMode('SKY');
+    }
   }
 
   public startAnimation(callback?: () => void): void {
