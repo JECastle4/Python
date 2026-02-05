@@ -208,15 +208,15 @@ onMounted(() => {
     sun.addToScene(sceneManager.scene);
     moon.addToScene(sceneManager.scene);
     // Hide objects until data is loaded
-    if (earth && earth.mesh && earth.gridHelper && earth.axesHelper && earth.hemisphereGrid) {
+    if (earth && earth.mesh && earth.getGridHelper() && earth.getAxesHelper() && earth.getHemisphereGrid()) {
       earth.mesh.visible = false;
-      earth.gridHelper.visible = false;
-      earth.axesHelper.visible = false;
-      earth.hemisphereGrid.visible = false;
+      earth.getGridHelper().visible = false;
+      earth.getAxesHelper().visible = false;
+      earth.getHemisphereGrid().visible = false;
     }
-    if (sun && sun.mesh && sun.light) {
+    if (sun && sun.mesh && sun.getLight()) {
       sun.mesh.visible = false;
-      sun.light.visible = false;
+      sun.getLight().visible = false;
     }
     if (moon && moon.mesh) {
       moon.mesh.visible = false;
@@ -248,13 +248,13 @@ async function loadData() {
     if (frame) {
       if (earth) {
         earth.mesh.visible = true;
-        earth.gridHelper.visible = true;
-        earth.axesHelper.visible = true;
-        earth.hemisphereGrid.visible = false;
+        earth.getGridHelper().visible = true;
+        earth.getAxesHelper().visible = true;
+        earth.getHemisphereGrid().visible = false;
       }
       if (sun) {
         sun.mesh.visible = frame.sun.is_visible;
-        sun.light.visible = frame.sun.is_visible;
+        sun.getLight().visible = frame.sun.is_visible;
       }
       if (moon) {
         moon.mesh.visible = frame.moon.is_visible;
@@ -312,14 +312,14 @@ function updatePositions() {
   if (sun) {
     // Only show sun in 3D view if above horizon
     sun.mesh.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
-    sun.light.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
+    sun.getLight().visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
     if (viewMode.value === '3D') {
       // Optionally: Only show sun in 3D if above horizon
       sun.mesh.visible = frame.sun.is_visible;
-      sun.light.visible = frame.sun.is_visible;
+      sun.getLight().visible = frame.sun.is_visible;
     } else {
       sun.mesh.visible = frame.sun.is_visible;
-      sun.light.visible = frame.sun.is_visible;
+      sun.getLight().visible = frame.sun.is_visible;
     }
   }
   if (moon) {
@@ -328,9 +328,9 @@ function updatePositions() {
   if (earth) {
     // Earth is always visible during animation
     earth.mesh.visible = true;
-    earth.gridHelper.visible = true;
-    earth.axesHelper.visible = true;
-    earth.hemisphereGrid.visible = (viewMode.value === 'SKY');
+    earth.getGridHelper().visible = true;
+    earth.getAxesHelper().visible = true;
+    earth.getHemisphereGrid().visible = (viewMode.value === 'SKY');
   }
 
   sun.updatePosition(
@@ -399,13 +399,13 @@ function resetAnimation() {
   // Hide objects on reset
   if (earth) {
     earth.mesh.visible = false;
-    earth.gridHelper.visible = false;
-    earth.axesHelper.visible = false;
-    earth.hemisphereGrid.visible = false;
+    earth.getGridHelper().visible = false;
+    earth.getAxesHelper().visible = false;
+    earth.getHemisphereGrid().visible = false;
   }
   if (sun) {
     sun.mesh.visible = false;
-    sun.light.visible = false;
+    sun.getLight().visible = false;
   }
   if (moon) {
     moon.mesh.visible = false;
@@ -419,13 +419,13 @@ function clearData() {
   // Hide objects on clear
   if (earth) {
     earth.mesh.visible = false;
-    earth.gridHelper.visible = false;
-    earth.axesHelper.visible = false;
-    earth.hemisphereGrid.visible = false;
+    earth.getGridHelper().visible = false;
+    earth.getAxesHelper().visible = false;
+    earth.getHemisphereGrid().visible = false;
   }
   if (sun) {
     sun.mesh.visible = false;
-    sun.light.visible = false;
+    sun.getLight().visible = false;
   }
   if (moon) {
     moon.mesh.visible = false;

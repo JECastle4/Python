@@ -31,9 +31,6 @@ export default defineConfig({
         'src/components/AstronomyScene.vue', // Complex Three.js component - validation tested, rendering needs E2E
         'tests/e2e/**/*.ts', // Exclude Playwright E2E tests from Vitest
       ],
-      all: true,
-      // Per-file coverage thresholds enforce high coverage on business logic
-      // scene.ts excluded from coverage (requires WebGL/GPU context)
       thresholds: {
         // Global thresholds
         lines: 80,

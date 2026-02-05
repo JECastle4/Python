@@ -84,4 +84,8 @@ export class Sun {
   public removeFromScene(scene: THREE.Scene): void {
     scene.remove(this.mesh);
   }
+  // Public getter for test access
+  public getLight(): THREE.PointLight {
+    return this.light;
+  }
 }

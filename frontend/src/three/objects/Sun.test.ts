@@ -195,6 +195,13 @@ describe('Sun', () => {
     });
   });
 
+  describe('getter coverage', () => {
+    it('getLight should return a PointLight', () => {
+      const sun = new Sun();
+      expect(sun.getLight()).toBeInstanceOf(THREE.PointLight);
+    });
+  });
+
   it('should use default geometry in setViewMode for non-sky', () => {
     const sun = new Sun();
     sun.setViewMode('3d');
