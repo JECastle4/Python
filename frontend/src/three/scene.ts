@@ -128,11 +128,12 @@ export class SceneManager {
 
     if (mode === '3D') {
       // 3D orbital view
-      this.camera.position.set(0, 7, 14);
+      this.camera.position.set(0, 7, 14); // restore original camera position
       this.controls.target.set(0, 0, 0);
       this.controls.minDistance = 2;
       this.controls.maxDistance = 50;
       this.scene.background = new THREE.Color(0x000011);
+      this.controls.update();
     } else {
       // Sky view: camera below dome, looking up, so full 360° dome is visible (responsive)
       const domeRadius = 30; // adjust if your dome is a different size

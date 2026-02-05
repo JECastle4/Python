@@ -310,8 +310,17 @@ function updatePositions() {
   
   // Update visibility based on frame data
   if (sun) {
-    sun.mesh.visible = frame.sun.is_visible;
-    sun.light.visible = frame.sun.is_visible;
+    // Only show sun in 3D view if above horizon
+    sun.mesh.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
+    sun.light.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
+    if (viewMode.value === '3D') {
+      // Optionally: Only show sun in 3D if above horizon
+      sun.mesh.visible = frame.sun.is_visible;
+      sun.light.visible = frame.sun.is_visible;
+    } else {
+      sun.mesh.visible = frame.sun.is_visible;
+      sun.light.visible = frame.sun.is_visible;
+    }
   }
   if (moon) {
     moon.mesh.visible = frame.moon.is_visible;
@@ -344,10 +353,11 @@ function updatePositions() {
 // Switch view mode
 function setViewMode(mode: '3D' | 'SKY') {
   viewMode.value = mode;
-  
-  if (sceneManager && earth) {
+  if (sceneManager && earth && sun && moon) {
     sceneManager.setViewMode(mode);
     earth.setViewMode(mode);
+    sun.setViewMode(mode.toLowerCase() as 'sky' | '3d');
+    moon.setViewMode(mode.toLowerCase() as 'sky' | '3d');
     updatePositions();
   }
 }

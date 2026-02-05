@@ -6,20 +6,31 @@ import * as THREE from 'three';
 export class Sun {
   public mesh: THREE.Mesh;
   private light: THREE.PointLight;
+  private skyViewGeometry: THREE.SphereGeometry;
+  private defaultGeometry: THREE.SphereGeometry;
 
   constructor() {
-    // Create sun geometry
-    const geometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xffdd44
-    });
-
-    this.mesh = new THREE.Mesh(geometry, material);
+    // Default size for 3D view
+    this.defaultGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    // Sky view size (exaggerated for visibility)
+    const domeRadius = 10;
+    const sunAngularDiameterRad = 0.009; // ~0.5 degrees in radians
+    let sunDiskRadius = domeRadius * Math.tan(sunAngularDiameterRad / 2) * 4; // exaggerate by 4x
+    if (sunDiskRadius < 0.2) sunDiskRadius = 0.2;
+    this.skyViewGeometry = new THREE.SphereGeometry(sunDiskRadius, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+    this.mesh = new THREE.Mesh(this.defaultGeometry, material);
     this.mesh.name = 'sun';
-
-    // Add point light at sun position
     this.light = new THREE.PointLight(0xffffdd, 2.0, 100);
     this.mesh.add(this.light);
+  }
+
+  setViewMode(mode: '3d' | 'sky') {
+    if (mode === 'sky') {
+      this.mesh.geometry = this.skyViewGeometry;
+    } else {
+      this.mesh.geometry = this.defaultGeometry;
+    }
   }
 
   /**
@@ -39,7 +50,7 @@ export class Sun {
       const distance = 15;
       this.mesh.position.x = distance * Math.cos(altitudeRad) * Math.sin(azimuthRad);
       this.mesh.position.y = distance * Math.sin(altitudeRad);
-      this.mesh.position.z = -distance * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+      this.mesh.position.z = distance * Math.cos(altitudeRad) * Math.cos(azimuthRad); // flipped sign
     } else {
       // Sky view: project onto hemisphere above observer
       const radius = 10;
