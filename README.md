@@ -1,6 +1,13 @@
 # Python
 John's python code - probably astronomy related
 
+# To start the app
+## PowerShell terminal 1
+cd frontend
+npm run dev
+## Powershell terminal 2
+uvicorn api.main:app --reload --port 8000
+
 Day 1
 HelloWorld
 Julian Date + Day of the Week

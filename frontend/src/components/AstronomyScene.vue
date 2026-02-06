@@ -1,8 +1,11 @@
 <template>
   <div class="astronomy-scene">
-    <canvas ref="canvasRef"></canvas>
-    
-    <div class="controls-panel">
+    <div class="scene-layout">
+        <div class="map-row">
+          <BaseMap v-if="!hasData" class="map-panel" />
+        </div>
+      <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
+      <div class="controls-panel">
       <h2>Sun and Moon Animation from Earth</h2>
       
       <div v-if="loading" class="loading">
@@ -121,10 +124,12 @@
       </div>
     </div>
   </div>
+</div>  
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import BaseMap from './BaseMap.vue';
 import { useAstronomyData } from '@/composables/useAstronomyData';
 import { SceneManager } from '@/three/scene';
 import { Sun } from '@/three/objects/Sun';
@@ -456,13 +461,54 @@ function handleResize() {
 </script>
 
 <style scoped>
+
 .astronomy-scene {
   width: 100%;
   height: 100%;
   position: relative;
   overflow: hidden;
+}
+
+.scene-layout {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.map-row {
+  width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.map-panel {
+  width: 60vw;
+  max-width: 900px;
+  min-width: 350px;
+  height: 400px;
+  min-height: 400px;
+  margin-top: 16px;
+  margin-left: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.canvas-panel {
+  width: 100%;
+  height: 100%;
+}
+
+.map-panel {
+  flex: 1 1 0;
+  min-width: 350px;
+  max-width: 700px;
+  height: 100%;
+}
+
+.canvas-panel {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
 }
 
 html, body, #app {
