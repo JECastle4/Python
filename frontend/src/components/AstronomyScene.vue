@@ -3,6 +3,13 @@
     <div class="scene-layout">
         <div class="map-row">
           <BaseMap v-if="!hasData" class="map-panel" :enablePinTool="true" @pin-placed="onPinPlaced" />
+          <DateRangePicker
+            v-if="!hasData"
+            class="date-range-panel"
+            :initialStartDate="params.start_date"
+            :initialEndDate="params.end_date"
+            @update:dates="onDateRangeSelected"
+          />
         </div>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
@@ -129,9 +136,16 @@
 
 <script setup lang="ts">
 // ...existing code...
+import DateRangePicker from './DateRangePicker.vue';
 function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
   params.value.latitude = lat;
   params.value.longitude = lon;
+}
+
+function onDateRangeSelected(dates: { start: Date, end: Date }) {
+  // Format as YYYY-MM-DD for params
+  params.value.start_date = dates.start.toISOString().slice(0, 10);
+  params.value.end_date = dates.end.toISOString().slice(0, 10);
 }
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import BaseMap from './BaseMap.vue';
@@ -169,13 +183,20 @@ const { data, loading, error, hasData, frameCount, fetchBatchObservations, clear
 //   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
 // TODO (#10): Replace hardcoded dates with relative/dynamic dates
 // test
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, '0');
+const dd = String(today.getDate()).padStart(2, '0');
+const startDate = `${yyyy}-${mm}-${dd}`;
+const endDate = `${yyyy}-${mm}-${dd}`;
+
 const params = ref({
   latitude: 51.5,
   longitude: -0.1,
-  start_date: '2026-02-02',  // Hardcoded - see issue #10
+  start_date: startDate,
   start_time: '00:00:00',
-  end_date: '2026-02-03',  // Hardcoded - see issue #10
-  end_time: '00:00:00',
+  end_date: endDate,
+  end_time: '23:59:59',
   frame_count: 48,
 });
 
