@@ -2,7 +2,7 @@
   <div class="astronomy-scene">
     <div class="scene-layout">
         <div class="map-row">
-          <BaseMap v-if="!hasData" class="map-panel" />
+          <BaseMap v-if="!hasData" class="map-panel" :enablePinTool="true" @pin-placed="onPinPlaced" />
         </div>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
@@ -128,6 +128,11 @@
 </template>
 
 <script setup lang="ts">
+// ...existing code...
+function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
+  params.value.latitude = lat;
+  params.value.longitude = lon;
+}
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import BaseMap from './BaseMap.vue';
 import { useAstronomyData } from '@/composables/useAstronomyData';
@@ -487,6 +492,7 @@ function handleResize() {
   min-width: 350px;
   height: 400px;
   min-height: 400px;
+  max-height: 400px;
   margin-top: 16px;
   margin-left: 16px;
   border-radius: 8px;

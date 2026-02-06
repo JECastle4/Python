@@ -41,3 +41,7 @@ E2E test
 Windows size changes affects the canvas sizing.
 Sizes of objects and default view settings updated.
 Visibility of objects on the parameters and animation views corrected.
+
+6/2/2026
+Parameter input UX
+- Use a map for coordinates
