@@ -24,6 +24,17 @@ test.describe('Astronomy Scene - Initial Load', () => {
     const frameCountInput = page.locator('label:has-text("Frame Count:")').locator('..').locator('input[type="number"]');
     await expect(frameCountInput).toHaveValue('48');
 
+    // Set the date range to 2/2/2026
+    const startDateInput = page.locator('input[type="date"]').first();
+    const endDateInput = page.locator('input[type="date"]').nth(1);
+    await startDateInput.fill('2026-02-02');
+    await endDateInput.fill('2026-02-02');
+    await page.waitForTimeout(100); // allow Vue to update
+    // Click Apply
+    const applyButton = page.getByRole('button', { name: 'Apply' });
+    await expect(applyButton).toBeEnabled();
+    await applyButton.click();
+
     // Verify the Load Data button exists and is enabled
     const loadButton = page.getByRole('button', { name: 'Load Data' });
     await expect(loadButton).toBeVisible();

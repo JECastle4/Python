@@ -1,8 +1,19 @@
 <template>
   <div class="astronomy-scene">
-    <canvas ref="canvasRef"></canvas>
-    
-    <div class="controls-panel">
+    <div class="scene-layout">
+      <div class="map-row">
+        <BaseMap v-if="!hasData" class="map-panel" :enablePinTool="true" @pin-placed="onPinPlaced" />
+      </div>
+      <div v-if="!hasData" class="date-range-row">
+        <DateRangePicker
+          class="date-range-panel"
+          :initialStartDate="params.start_date"
+          :initialEndDate="params.end_date"
+          @update:dates="onDateRangeSelected"
+        />
+      </div>
+      <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
+      <div class="controls-panel">
       <h2>Sun and Moon Animation from Earth</h2>
       
       <div v-if="loading" class="loading">
@@ -19,7 +30,7 @@
           <input 
             v-model.number="params.latitude" 
             type="number" 
-            step="0.1"
+              step="0.1"
             min="-90"
             max="90"
             required
@@ -61,25 +72,34 @@
           <input v-model="params.end_date" type="date" />
         </div>
         
+      
         <div class="form-group">
           <label>End Time:</label>
           <input v-model="params.end_time" type="time" step="1" />
         </div>
         
+        <div class="form-group frames-per-day-group">
+          <label>Frames per day:</label>
+          <input
+            v-model.number="framesPerDay"
+            type="range"
+            min="1"
+            max="1440"
+            step="1"
+          />
+          <span>{{ framesPerDay }} frames/day</span>
+        </div>
+
         <div class="form-group">
           <label>Frame Count:</label>
-          <input 
-            v-model.number="params.frame_count" 
-            type="number" 
-            min="2" 
-            max="10000"
-            step="1"
+          <input
+            v-model.number="params.frame_count"
+            type="number"
+            min="1"
             required
-            :class="{ invalid: !isFrameCountValid }"
+            readonly
           />
-          <span v-if="!isFrameCountValid" class="error-message">
-            Frame count must be between 2 and 10000
-          </span>
+          <span>{{ params.frame_count }} total frames</span>
         </div>
         
         <button @click="loadData" :disabled="loading || !isFormValid">Load Data</button>
@@ -111,31 +131,49 @@
         
         <div v-if="currentFrame" class="current-info">
           <p><strong>Time:</strong> {{ currentFrame.datetime }}</p>
-          <p><strong>Sun Alt:</strong> {{ currentFrame.sun.altitude.toFixed(1) }}°</p>
-          <p><strong>Sun Visible:</strong> {{ currentFrame.sun.is_visible ? 'Yes' : 'No' }}</p>
-          <p><strong>Moon Alt:</strong> {{ currentFrame.moon.altitude.toFixed(1) }}°</p>
-          <p><strong>Moon Visible:</strong> {{ currentFrame.moon.is_visible ? 'Yes' : 'No' }}</p>
+            <p><strong>Sun Alt:</strong> {{ typeof currentFrame.sun.altitude === 'number' ? currentFrame.sun.altitude.toFixed(1) : 'N/A' }}°</p>
+            <p><strong>Sun Visible:</strong> {{ currentFrame.sun.is_visible ? 'Yes' : 'No' }}</p>
+            <p><strong>Moon Alt:</strong> {{ typeof currentFrame.moon.altitude === 'number' ? currentFrame.moon.altitude.toFixed(1) : 'N/A' }}°</p>
+            <p><strong>Moon Visible:</strong> {{ currentFrame.moon.is_visible ? 'Yes' : 'No' }}</p>
           <p><strong>Moon Phase:</strong> {{ currentFrame.moon_phase.phase_name }}</p>
           <p><strong>Illumination:</strong> {{ (currentFrame.moon_phase.illumination * 100).toFixed(1) }}%</p>
         </div>
       </div>
     </div>
   </div>
+</div>  
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useAstronomyData } from '@/composables/useAstronomyData';
-import { SceneManager } from '@/three/scene';
-import { Sun } from '@/three/objects/Sun';
-import { Moon } from '@/three/objects/Moon';
-import { Earth } from '@/three/objects/Earth';
-import type { ObservationFrame } from '@/types/api.types';
+import { defineAsyncComponent } from 'vue';
+const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
+const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
+
+// Form parameters with defaults
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, '0');
+const dd = String(today.getDate()).padStart(2, '0');
+const startDate = `${yyyy}-${mm}-${dd}`;
+const endDate = `${yyyy}-${mm}-${dd}`;
+
+const params = ref({
+  latitude: 51.5,
+  longitude: -0.1,
+  start_date: startDate,
+  start_time: '00:00:00',
+  end_date: endDate,
+  end_time: '23:59:59',
+  frame_count: 48,
+});
+
+const framesPerDay = ref(48);
 
 // Canvas reference
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-
-// Animation state
+// API data
+const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
+  // Animation state
 let sceneManager: SceneManager | null = null;
 let sun: Sun | null = null;
 let moon: Moon | null = null;
@@ -148,26 +186,46 @@ const viewMode = ref<'3D' | 'SKY'>('3D');
 const lastTime = ref(0);
 const frameIntervalMs = ref(1000); // Time between frames in milliseconds
 
-// API data
-const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
+function calculateDaysInRange() {
+  const start = new Date(params.value.start_date);
+  const end = new Date(params.value.end_date);
 
-// Form parameters with defaults
-// TODO: Improve date/time handling - calculate intelligent start/end times based on:
-//   - Sun/moon rise/set times for the location
-//   - Astronomical events (dawn, dusk, twilight periods)
-//   - User's timezone
-//   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
-// TODO (#10): Replace hardcoded dates with relative/dynamic dates
-// test
-const params = ref({
-  latitude: 51.5,
-  longitude: -0.1,
-  start_date: '2026-02-02',  // Hardcoded - see issue #10
-  start_time: '00:00:00',
-  end_date: '2026-02-03',  // Hardcoded - see issue #10
-  end_time: '00:00:00',
-  frame_count: 48,
-});
+  // Form parameters with defaults
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1;
+}
+
+function updateFrameCount() {
+  const days = calculateDaysInRange();
+  params.value.frame_count = days * framesPerDay.value;
+}
+
+// Watch for changes in date range or framesPerDay
+import { watch } from 'vue';
+watch([
+  () => params.value.start_date,
+  () => params.value.end_date,
+  framesPerDay
+], updateFrameCount, { immediate: true });
+
+function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
+  params.value.latitude = lat;
+  params.value.longitude = lon;
+}
+
+function onDateRangeSelected(dates: { start: Date, end: Date }) {
+  // Format as YYYY-MM-DD for params
+  params.value.start_date = dates.start.toISOString().slice(0, 10);
+  params.value.end_date = dates.end.toISOString().slice(0, 10);
+}
+
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useAstronomyData } from '@/composables/useAstronomyData';
+import { SceneManager } from '@/three/scene';
+import { Sun } from '@/three/objects/Sun';
+import { Moon } from '@/three/objects/Moon';
+import { Earth } from '@/three/objects/Earth';
+import type { ObservationFrame } from '@/types/api.types';
 
 // Current frame
 const currentFrame = computed<ObservationFrame | null>(() => {
@@ -197,9 +255,10 @@ const isFormValid = computed(() => {
   return isLatitudeValid.value && isLongitudeValid.value && isFrameCountValid.value;
 });
 
-// Initialize Three.js scene
-onMounted(() => {
-  if (canvasRef.value) {
+
+const initializeObjects = () => {
+  if (!canvasRef.value) return;
+  if (!earth || !sun || !moon || !sceneManager) {
     sceneManager = new SceneManager(canvasRef.value);
     earth = new Earth();
     sun = new Sun();
@@ -223,7 +282,34 @@ onMounted(() => {
     }
     sceneManager.startAnimation(updateAnimation);
   }
-  // Add window resize event listener
+};
+
+import { nextTick } from 'vue';
+
+// Initialize Three.js scene when canvas is available (hasData becomes true)
+watch(
+  () => hasData.value,
+  (newVal) => {
+    if (newVal) {
+      nextTick(() => {
+        // Vue will set canvasRef.value after DOM update
+        if (canvasRef.value) {
+          initializeObjects();
+        } else {
+          // If still not set, try again on next tick
+          nextTick(() => {
+            if (canvasRef.value) {
+              initializeObjects();
+            }
+          });
+        }
+      });
+    }
+  }
+);
+
+// Add window resize event listener on mount
+onMounted(() => {
   window.addEventListener('resize', handleResize);
 });
 
@@ -240,6 +326,19 @@ onUnmounted(() => {
 async function loadData() {
   await fetchBatchObservations(params.value);
   if (hasData.value) {
+    if (!canvasRef.value) {
+      await nextTick();
+      // If still not set, manually query the DOM for the canvas
+      if (!canvasRef.value) {
+        const domCanvas = document.querySelector('.canvas-panel');
+        if (domCanvas instanceof HTMLCanvasElement) {
+          canvasRef.value = domCanvas;
+        }
+      }
+    }
+    if (!sun || !moon || !earth || !sceneManager) {
+      initializeObjects();
+    }
     currentIndex.value = 0;
     calculateFrameInterval();
     updatePositions();
@@ -416,20 +515,14 @@ function clearData() {
   isAnimating.value = false;
   currentIndex.value = 0;
   clearApiData();
-  // Hide objects on clear
-  if (earth) {
-    earth.mesh.visible = false;
-    earth.getGridHelper().visible = false;
-    earth.getAxesHelper().visible = false;
-    earth.getHemisphereGrid().visible = false;
+  // Dispose and null out scene objects so they are recreated on next load
+  if (sceneManager) {
+    sceneManager.dispose();
+    sceneManager = null;
   }
-  if (sun) {
-    sun.mesh.visible = false;
-    sun.getLight().visible = false;
-  }
-  if (moon) {
-    moon.mesh.visible = false;
-  }
+  sun = null;
+  moon = null;
+  earth = null;
 }
 
 // Window resize event handler
@@ -456,13 +549,55 @@ function handleResize() {
 </script>
 
 <style scoped>
+
 .astronomy-scene {
   width: 100%;
   height: 100%;
   position: relative;
   overflow: hidden;
+}
+
+.scene-layout {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.map-row {
+  width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.map-panel {
+  width: 60vw;
+  max-width: 900px;
+  min-width: 350px;
+  height: 400px;
+  min-height: 400px;
+  max-height: 400px;
+  margin-top: 16px;
+  margin-left: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.canvas-panel {
+  width: 100%;
+  height: 100%;
+}
+
+.map-panel {
+  flex: 1 1 0;
+  min-width: 350px;
+  max-width: 700px;
+  height: 100%;
+}
+
+.canvas-panel {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
 }
 
 html, body, #app {
@@ -595,5 +730,42 @@ button:disabled {
 
 .current-info p {
   margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .scene-layout {
+    padding: 8px;
+  }
+  .map-panel, .date-range-panel {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
 }
 </style>

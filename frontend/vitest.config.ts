@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     exclude: [
       'tests/e2e/**', // Exclude Playwright E2E tests from Vitest
-      'node_modules/meshoptimizer/*.test.js', // Exclude meshoptimizer test files
+      'node_modules/**', // Exclude dependencies
     ],
     globals: true,
     environment: 'happy-dom',
@@ -20,7 +20,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
-        'node_modules/',
+        'node_modules/**',
         'src/**/*.d.ts',
         'src/main.ts',
         'src/vite-env.d.ts',
@@ -28,7 +28,9 @@ export default defineConfig({
         'dist/',
         'src/three/scene.ts',     // Requires WebGL/GPU context, covered by E2E tests
         'src/services/config.ts', // Production validation code (environment-dependent)
-        'src/components/AstronomyScene.vue', // Complex Three.js component - validation tested, rendering needs E2E
+        'src/components/AstronomyScene.vue', // Complex Three.js component - validation tested, rendering needs E2E tests
+        'src/components/BaseMap.vue', // Complex map interaction, needs E2E tests
+        'src/components/DateRangePicker.vue', // Event tests, needs E2E tests for the restq
         'tests/e2e/**/*.ts', // Exclude Playwright E2E tests from Vitest
       ],
       thresholds: {

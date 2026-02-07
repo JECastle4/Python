@@ -20,4 +20,18 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: [
+            'vue'
+          ],
+          three: [
+            'three',
+          ]
+        },
+      },
+    },
+  },
 })
