@@ -1,16 +1,17 @@
 <template>
   <div class="astronomy-scene">
     <div class="scene-layout">
-        <div class="map-row">
-          <BaseMap v-if="!hasData" class="map-panel" :enablePinTool="true" @pin-placed="onPinPlaced" />
-          <DateRangePicker
-            v-if="!hasData"
-            class="date-range-panel"
-            :initialStartDate="params.start_date"
-            :initialEndDate="params.end_date"
-            @update:dates="onDateRangeSelected"
-          />
-        </div>
+      <div class="map-row">
+        <BaseMap v-if="!hasData" class="map-panel" :enablePinTool="true" @pin-placed="onPinPlaced" />
+      </div>
+      <div v-if="!hasData" class="date-range-row">
+        <DateRangePicker
+          class="date-range-panel"
+          :initialStartDate="params.start_date"
+          :initialEndDate="params.end_date"
+          @update:dates="onDateRangeSelected"
+        />
+      </div>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
       <h2>Sun and Moon Animation from Earth</h2>
@@ -29,7 +30,7 @@
           <input 
             v-model.number="params.latitude" 
             type="number" 
-            step="0.1"
+              step="0.1"
             min="-90"
             max="90"
             required
@@ -71,6 +72,7 @@
           <input v-model="params.end_date" type="date" />
         </div>
         
+      
         <div class="form-group">
           <label>End Time:</label>
           <input v-model="params.end_time" type="time" step="1" />
@@ -728,5 +730,42 @@ button:disabled {
 
 .current-info p {
   margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .scene-layout {
+    padding: 8px;
+  }
+  .map-panel, .date-range-panel {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
 }
 </style>
