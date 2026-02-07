@@ -9,7 +9,7 @@ describe('AstronomyApiClient', () => {
   beforeEach(() => {
     client = new AstronomyApiClient();
     fetchMock = vi.fn();
-    global.fetch = fetchMock as any;
+    globalThis.fetch = fetchMock as any;
   });
 
   afterEach(() => {
