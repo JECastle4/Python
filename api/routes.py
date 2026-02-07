@@ -1,7 +1,8 @@
 """
 API routes for astronomy calculations
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from api.models import (
     DateTimeRequest,
     DayOfWeekResponse,
@@ -20,7 +21,54 @@ from api.services.moon import calculate_moon_position
 from api.services.moon_phase import calculate_moon_phase
 from api.services.batch_earth_observations import calculate_batch_earth_observations
 
+
+
 router = APIRouter()
+# SSE endpoint for batch earth observations
+@router.post(
+    "/batch-earth-observations-stream",
+    tags=["batch", "sse"],
+    summary="Stream batch celestial observations from Earth (SSE)",
+    description="""
+    Streams multiple frames of sun and moon positions and moon phase from an Earth location using Server-Sent Events (SSE).
+    Each frame is sent as a separate SSE event.
+    """
+)
+async def stream_batch_earth_observations(request: Request):
+    from api.models import BatchEarthObservationsRequest
+    try:
+        body = await request.json()
+        batch_request = BatchEarthObservationsRequest(**body)
+
+        def event_generator():
+            import json
+            gen = calculate_batch_earth_observations(
+                start_date=batch_request.start_date,
+                start_time=batch_request.start_time,
+                end_date=batch_request.end_date,
+                end_time=batch_request.end_time,
+                frame_count=batch_request.frame_count,
+                latitude=batch_request.latitude,
+                longitude=batch_request.longitude,
+                elevation=batch_request.elevation
+            )
+            for idx, item in enumerate(gen):
+                if idx < batch_request.frame_count:
+                    yield f"event: frame\nid: {idx}\ndata: {json.dumps(item)}\n\n"
+                else:
+                    yield f"event: metadata\ndata: {json.dumps(item)}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid input: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error streaming batch observations: {str(e)}"
+        )
 
 
 @router.post("/day-of-week", response_model=DayOfWeekResponse)
@@ -212,7 +260,7 @@ async def get_moon_phase(request: MoonPhaseRequest):
 async def get_batch_earth_observations(request: BatchEarthObservationsRequest):
     """Calculate batch observations of celestial positions from Earth"""
     try:
-        result = calculate_batch_earth_observations(
+        gen = calculate_batch_earth_observations(
             start_date=request.start_date,
             start_time=request.start_time,
             end_date=request.end_date,
@@ -222,9 +270,14 @@ async def get_batch_earth_observations(request: BatchEarthObservationsRequest):
             longitude=request.longitude,
             elevation=request.elevation
         )
-        
-        return BatchEarthObservationsResponse(**result)
-    
+        frames = []
+        metadata = None
+        for idx, item in enumerate(gen):
+            if idx < request.frame_count:
+                frames.append(item)
+            else:
+                metadata = item
+        return BatchEarthObservationsResponse(frames=frames, metadata=metadata)
     except ValueError as e:
         raise HTTPException(
             status_code=400,
