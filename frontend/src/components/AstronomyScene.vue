@@ -145,7 +145,9 @@
 </template>
 
 <script setup lang="ts">
-// ...existing code...
+import { defineAsyncComponent } from 'vue';
+const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
+const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
 
 // Form parameters with defaults
 const today = new Date();
@@ -206,7 +208,6 @@ watch([
   framesPerDay
 ], updateFrameCount, { immediate: true });
 
-import DateRangePicker from './DateRangePicker.vue';
 function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
   params.value.latitude = lat;
   params.value.longitude = lon;
@@ -219,7 +220,6 @@ function onDateRangeSelected(dates: { start: Date, end: Date }) {
 }
 
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import BaseMap from './BaseMap.vue';
 import { useAstronomyData } from '@/composables/useAstronomyData';
 import { SceneManager } from '@/three/scene';
 import { Sun } from '@/three/objects/Sun';
