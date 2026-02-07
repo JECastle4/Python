@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
   if (mapInstance) {
     mapInstance.setTarget(null)
     mapInstance = null
-    if (pinLayer) {
+    if (pinLayer && mapInstance) {
       mapInstance.removeLayer(pinLayer)
       pinLayer = null
       pinSource = null

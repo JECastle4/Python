@@ -21,12 +21,12 @@ Moon phase
 Sun and moon animation
 # Test commit to verify branch protection
 
-Phase 1
+## Phase 1
 Building to two Open GL animations:
 SunAndMoonAnimation - Earth bound
 SolarSystemAnimation - Sun centered
 
-1/2/2026
+## 1/2/2026
 Initial API layer
 - Dates
 - Sun position
@@ -34,14 +34,16 @@ Initial API layer
 - Moon phase
 Enough for 1 frame on the Earth bound animation.
 
-4/2/2026
+## 4/2/2026
 E2E test
 
-5/2/2026
+## 5/2/2026
 Windows size changes affects the canvas sizing.
 Sizes of objects and default view settings updated.
 Visibility of objects on the parameters and animation views corrected.
 
-6/2/2026
+## 6/2/2026 - 7/2/2026
 Parameter input UX
 - Use a map for coordinates
+- Date range picker, defaulting to today
+- Slider for frames per day

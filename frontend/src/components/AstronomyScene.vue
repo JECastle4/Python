@@ -76,20 +76,28 @@
           <input v-model="params.end_time" type="time" step="1" />
         </div>
         
+        <div class="form-group frames-per-day-group">
+          <label>Frames per day:</label>
+          <input
+            v-model.number="framesPerDay"
+            type="range"
+            min="1"
+            max="1440"
+            step="1"
+          />
+          <span>{{ framesPerDay }} frames/day</span>
+        </div>
+
         <div class="form-group">
           <label>Frame Count:</label>
-          <input 
-            v-model.number="params.frame_count" 
-            type="number" 
-            min="2" 
-            max="10000"
-            step="1"
+          <input
+            v-model.number="params.frame_count"
+            type="number"
+            min="1"
             required
-            :class="{ invalid: !isFrameCountValid }"
+            readonly
           />
-          <span v-if="!isFrameCountValid" class="error-message">
-            Frame count must be between 2 and 10000
-          </span>
+          <span>{{ params.frame_count }} total frames</span>
         </div>
         
         <button @click="loadData" :disabled="loading || !isFormValid">Load Data</button>
@@ -121,10 +129,10 @@
         
         <div v-if="currentFrame" class="current-info">
           <p><strong>Time:</strong> {{ currentFrame.datetime }}</p>
-          <p><strong>Sun Alt:</strong> {{ currentFrame.sun.altitude.toFixed(1) }}°</p>
-          <p><strong>Sun Visible:</strong> {{ currentFrame.sun.is_visible ? 'Yes' : 'No' }}</p>
-          <p><strong>Moon Alt:</strong> {{ currentFrame.moon.altitude.toFixed(1) }}°</p>
-          <p><strong>Moon Visible:</strong> {{ currentFrame.moon.is_visible ? 'Yes' : 'No' }}</p>
+            <p><strong>Sun Alt:</strong> {{ typeof currentFrame.sun.altitude === 'number' ? currentFrame.sun.altitude.toFixed(1) : 'N/A' }}°</p>
+            <p><strong>Sun Visible:</strong> {{ currentFrame.sun.is_visible ? 'Yes' : 'No' }}</p>
+            <p><strong>Moon Alt:</strong> {{ typeof currentFrame.moon.altitude === 'number' ? currentFrame.moon.altitude.toFixed(1) : 'N/A' }}°</p>
+            <p><strong>Moon Visible:</strong> {{ currentFrame.moon.is_visible ? 'Yes' : 'No' }}</p>
           <p><strong>Moon Phase:</strong> {{ currentFrame.moon_phase.phase_name }}</p>
           <p><strong>Illumination:</strong> {{ (currentFrame.moon_phase.illumination * 100).toFixed(1) }}%</p>
         </div>
@@ -136,53 +144,8 @@
 
 <script setup lang="ts">
 // ...existing code...
-import DateRangePicker from './DateRangePicker.vue';
-function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
-  params.value.latitude = lat;
-  params.value.longitude = lon;
-}
-
-function onDateRangeSelected(dates: { start: Date, end: Date }) {
-  // Format as YYYY-MM-DD for params
-  params.value.start_date = dates.start.toISOString().slice(0, 10);
-  params.value.end_date = dates.end.toISOString().slice(0, 10);
-}
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import BaseMap from './BaseMap.vue';
-import { useAstronomyData } from '@/composables/useAstronomyData';
-import { SceneManager } from '@/three/scene';
-import { Sun } from '@/three/objects/Sun';
-import { Moon } from '@/three/objects/Moon';
-import { Earth } from '@/three/objects/Earth';
-import type { ObservationFrame } from '@/types/api.types';
-
-// Canvas reference
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-
-// Animation state
-let sceneManager: SceneManager | null = null;
-let sun: Sun | null = null;
-let moon: Moon | null = null;
-let earth: Earth | null = null;
-
-const isAnimating = ref(false);
-const animationSpeed = ref(1.0);
-const currentIndex = ref(0);
-const viewMode = ref<'3D' | 'SKY'>('3D');
-const lastTime = ref(0);
-const frameIntervalMs = ref(1000); // Time between frames in milliseconds
-
-// API data
-const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
 
 // Form parameters with defaults
-// TODO: Improve date/time handling - calculate intelligent start/end times based on:
-//   - Sun/moon rise/set times for the location
-//   - Astronomical events (dawn, dusk, twilight periods)
-//   - User's timezone
-//   - Suggested observation windows (e.g., "next 24 hours", "tonight", "this week")
-// TODO (#10): Replace hardcoded dates with relative/dynamic dates
-// test
 const today = new Date();
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -199,6 +162,68 @@ const params = ref({
   end_time: '23:59:59',
   frame_count: 48,
 });
+
+const framesPerDay = ref(48);
+
+// Canvas reference
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+// API data
+const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
+  // Animation state
+let sceneManager: SceneManager | null = null;
+let sun: Sun | null = null;
+let moon: Moon | null = null;
+let earth: Earth | null = null;
+
+const isAnimating = ref(false);
+const animationSpeed = ref(1.0);
+const currentIndex = ref(0);
+const viewMode = ref<'3D' | 'SKY'>('3D');
+const lastTime = ref(0);
+const frameIntervalMs = ref(1000); // Time between frames in milliseconds
+
+function calculateDaysInRange() {
+  const start = new Date(params.value.start_date);
+  const end = new Date(params.value.end_date);
+
+  // Form parameters with defaults
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1;
+}
+
+function updateFrameCount() {
+  const days = calculateDaysInRange();
+  params.value.frame_count = days * framesPerDay.value;
+}
+
+// Watch for changes in date range or framesPerDay
+import { watch } from 'vue';
+watch([
+  () => params.value.start_date,
+  () => params.value.end_date,
+  framesPerDay
+], updateFrameCount, { immediate: true });
+
+import DateRangePicker from './DateRangePicker.vue';
+function onPinPlaced({ lat, lon }: { lat: number; lon: number }) {
+  params.value.latitude = lat;
+  params.value.longitude = lon;
+}
+
+function onDateRangeSelected(dates: { start: Date, end: Date }) {
+  // Format as YYYY-MM-DD for params
+  params.value.start_date = dates.start.toISOString().slice(0, 10);
+  params.value.end_date = dates.end.toISOString().slice(0, 10);
+}
+
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import BaseMap from './BaseMap.vue';
+import { useAstronomyData } from '@/composables/useAstronomyData';
+import { SceneManager } from '@/three/scene';
+import { Sun } from '@/three/objects/Sun';
+import { Moon } from '@/three/objects/Moon';
+import { Earth } from '@/three/objects/Earth';
+import type { ObservationFrame } from '@/types/api.types';
 
 // Current frame
 const currentFrame = computed<ObservationFrame | null>(() => {
@@ -228,9 +253,10 @@ const isFormValid = computed(() => {
   return isLatitudeValid.value && isLongitudeValid.value && isFrameCountValid.value;
 });
 
-// Initialize Three.js scene
-onMounted(() => {
-  if (canvasRef.value) {
+
+const initializeObjects = () => {
+  if (!canvasRef.value) return;
+  if (!earth || !sun || !moon || !sceneManager) {
     sceneManager = new SceneManager(canvasRef.value);
     earth = new Earth();
     sun = new Sun();
@@ -254,7 +280,34 @@ onMounted(() => {
     }
     sceneManager.startAnimation(updateAnimation);
   }
-  // Add window resize event listener
+};
+
+import { nextTick } from 'vue';
+
+// Initialize Three.js scene when canvas is available (hasData becomes true)
+watch(
+  () => hasData.value,
+  (newVal) => {
+    if (newVal) {
+      nextTick(() => {
+        // Vue will set canvasRef.value after DOM update
+        if (canvasRef.value) {
+          initializeObjects();
+        } else {
+          // If still not set, try again on next tick
+          nextTick(() => {
+            if (canvasRef.value) {
+              initializeObjects();
+            }
+          });
+        }
+      });
+    }
+  }
+);
+
+// Add window resize event listener on mount
+onMounted(() => {
   window.addEventListener('resize', handleResize);
 });
 
@@ -271,6 +324,19 @@ onUnmounted(() => {
 async function loadData() {
   await fetchBatchObservations(params.value);
   if (hasData.value) {
+    if (!canvasRef.value) {
+      await nextTick();
+      // If still not set, manually query the DOM for the canvas
+      if (!canvasRef.value) {
+        const domCanvas = document.querySelector('.canvas-panel');
+        if (domCanvas instanceof HTMLCanvasElement) {
+          canvasRef.value = domCanvas;
+        }
+      }
+    }
+    if (!sun || !moon || !earth || !sceneManager) {
+      initializeObjects();
+    }
     currentIndex.value = 0;
     calculateFrameInterval();
     updatePositions();
@@ -447,20 +513,14 @@ function clearData() {
   isAnimating.value = false;
   currentIndex.value = 0;
   clearApiData();
-  // Hide objects on clear
-  if (earth) {
-    earth.mesh.visible = false;
-    earth.getGridHelper().visible = false;
-    earth.getAxesHelper().visible = false;
-    earth.getHemisphereGrid().visible = false;
+  // Dispose and null out scene objects so they are recreated on next load
+  if (sceneManager) {
+    sceneManager.dispose();
+    sceneManager = null;
   }
-  if (sun) {
-    sun.mesh.visible = false;
-    sun.getLight().visible = false;
-  }
-  if (moon) {
-    moon.mesh.visible = false;
-  }
+  sun = null;
+  moon = null;
+  earth = null;
 }
 
 // Window resize event handler
