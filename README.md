@@ -62,3 +62,6 @@ Parameter input UX
 Progress bar for long running API call
 -- SSE to send each frame as an event
 -- Progress bar that show progress and only times out if any frame takes too long
+
+## 8/2/2026
+Consolidate CSS, remove duplication, single block per class
