@@ -1,12 +1,22 @@
 # Python
 John's python code - probably astronomy related
 
-# To start the app
+# To start the app:
 ## PowerShell terminal 1
-cd frontend
-npm run dev
+cd frontend; npm run dev
 ## Powershell terminal 2
 uvicorn api.main:app --reload --port 8000
+
+# To run tests:
+## Python
+$env:PYTHONPATH="." ; pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+## FE
+cd frontend
+npm run type-check
+npm run test:coverage
+npm run test:ui
+npm run test:e2e
+
 
 Day 1
 HelloWorld

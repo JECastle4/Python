@@ -427,9 +427,9 @@ def test_sse_batch_earth_observations_stream():
         "longitude": -74.0060,
         "elevation": 10.0
     }
-    response = client.post(
+    response = client.get(
         "/batch-earth-observations-stream",
-        json=payload,
+        params=payload,
         headers={"Accept": "text/event-stream"}
     )
     assert response.status_code == 200
