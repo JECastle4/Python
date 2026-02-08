@@ -53,3 +53,4 @@ Thumbs.db
 # Project specific
 test_batch_output.txt
 OPTIMIZATION_NOTES.md
+coverage.xml
