@@ -47,3 +47,8 @@ Parameter input UX
 - Use a map for coordinates
 - Date range picker, defaulting to today
 - Slider for frames per day
+
+## 7/2/2026
+Progress bar for long running API call
+-- SSE to send each frame as an event
+-- Progress bar that show progress and only times out if any frame takes too long

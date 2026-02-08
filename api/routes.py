@@ -25,7 +25,10 @@ from api.services.batch_earth_observations import calculate_batch_earth_observat
 
 router = APIRouter()
 # SSE endpoint for batch earth observations
-@router.post(
+
+from fastapi import Query
+
+@router.get(
     "/batch-earth-observations-stream",
     tags=["batch", "sse"],
     summary="Stream batch celestial observations from Earth (SSE)",
@@ -34,26 +37,31 @@ router = APIRouter()
     Each frame is sent as a separate SSE event.
     """
 )
-async def stream_batch_earth_observations(request: Request):
-    from api.models import BatchEarthObservationsRequest
+async def stream_batch_earth_observations(
+    start_date: str = Query(...),
+    start_time: str = Query(...),
+    end_date: str = Query(...),
+    end_time: str = Query(...),
+    frame_count: int = Query(...),
+    latitude: float = Query(...),
+    longitude: float = Query(...),
+    elevation: float = Query(0.0)
+):
     try:
-        body = await request.json()
-        batch_request = BatchEarthObservationsRequest(**body)
-
         def event_generator():
             import json
             gen = calculate_batch_earth_observations(
-                start_date=batch_request.start_date,
-                start_time=batch_request.start_time,
-                end_date=batch_request.end_date,
-                end_time=batch_request.end_time,
-                frame_count=batch_request.frame_count,
-                latitude=batch_request.latitude,
-                longitude=batch_request.longitude,
-                elevation=batch_request.elevation
+                start_date=start_date,
+                start_time=start_time,
+                end_date=end_date,
+                end_time=end_time,
+                frame_count=frame_count,
+                latitude=latitude,
+                longitude=longitude,
+                elevation=elevation
             )
             for idx, item in enumerate(gen):
-                if idx < batch_request.frame_count:
+                if idx < frame_count:
                     yield f"event: frame\nid: {idx}\ndata: {json.dumps(item)}\n\n"
                 else:
                     yield f"event: metadata\ndata: {json.dumps(item)}\n\n"

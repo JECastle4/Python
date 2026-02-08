@@ -1,3 +1,10 @@
+// Helper to ensure all frames have a moon_phase property
+function withMoonPhase(frames: any[]): any[] {
+  return frames.map(frame => ({
+    ...frame,
+    moon_phase: frame.moon_phase || { phase_name: 'Full Moon', illumination: 1.0, phase_angle: 0 },
+  }));
+}
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import AstronomyScene from './AstronomyScene.vue';
@@ -20,35 +27,49 @@ vi.mock('@/three/scene', () => ({
   },
 }));
 
-vi.mock('@/three/objects/Earth', () => ({
-  Earth: class MockEarth {
-    addToScene = vi.fn();
-    update = vi.fn();
-  },
-}));
-
 vi.mock('@/three/objects/Sun', () => ({
   Sun: class MockSun {
+    mesh = { visible: true };
+    getLight = () => ({ visible: true });
     addToScene = vi.fn();
     update = vi.fn();
+    updatePosition = vi.fn(); // Added for test compatibility
   },
 }));
 
 vi.mock('@/three/objects/Moon', () => ({
   Moon: class MockMoon {
+    mesh = { visible: true };
+    addToScene = vi.fn();
+    update = vi.fn();
+    updatePosition = vi.fn();
+    updatePhase = vi.fn(); // Added for test compatibility
+  },
+}));
+
+vi.mock('@/three/objects/Earth', () => ({
+  Earth: class MockEarth {
+    mesh = { visible: true };
+    getGridHelper = () => ({ visible: true });
+    getAxesHelper = () => ({ visible: true });
+    getHemisphereGrid = () => ({ visible: true });
     addToScene = vi.fn();
     update = vi.fn();
   },
 }));
 
 // Mock composable - will be customized per test
+import { ref } from 'vue';
 let mockFetchBatchObservations = vi.fn();
-let mockLoading = { value: false };
-let mockError: { value: string | null } = { value: null };
-let mockData: { value: any } = { value: null };
-let mockHasData = { value: false };
-let mockFrameCount = { value: 24 };
+let mockFetchBatchObservationsSSE = vi.fn();
+let mockLoading = ref(false);
+let mockError = ref<string | null>(null);
+let mockData = ref<any>(null);
+let mockHasData = ref(false);
+let mockFrameCount = ref(24);
 let mockClearData = vi.fn();
+let mockSseFrames = ref([]);
+let mockSseExpectedFrameCount = ref(0);
 
 vi.mock('@/composables/useAstronomyData', () => ({
   useAstronomyData: vi.fn(() => ({
@@ -56,9 +77,13 @@ vi.mock('@/composables/useAstronomyData', () => ({
     error: mockError,
     data: mockData,
     fetchBatchObservations: mockFetchBatchObservations,
+    fetchBatchObservationsSSE: mockFetchBatchObservationsSSE,
     hasData: mockHasData,
     frameCount: mockFrameCount,
     clearData: mockClearData,
+    sseFrames: mockSseFrames,
+    sseExpectedFrameCount: mockSseExpectedFrameCount,
+    sseProgress: ref(0),
   })),
 }));
 
@@ -68,10 +93,14 @@ describe('AstronomyScene - Form Validation', () => {
   beforeEach(() => {
     // Reset mock state
     mockFetchBatchObservations = vi.fn();
+    mockFetchBatchObservationsSSE = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
     mockHasData.value = false;
+    mockFrameCount.value = 24;
+    mockSseFrames.value = [];
+    mockSseExpectedFrameCount.value = 0;
     
     wrapper = mount(AstronomyScene);
   });
@@ -288,9 +317,7 @@ describe('AstronomyScene - Data Loading', () => {
   it('should display error message when error occurs', async () => {
     mockError.value = 'Failed to load data';
     await wrapper.vm.$nextTick();
-    
-    const vm = wrapper.vm as any;
-    expect(vm.error.value).toBe('Failed to load data');
+    expect(wrapper.text()).toContain('Failed to load data');
   });
 
 });
@@ -303,7 +330,7 @@ describe('AstronomyScene - With Data Loaded', () => {
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = {
-      frames: [
+      frames: withMoonPhase([
         {
           datetime: '2026-02-02T00:00:00',
           sun: { altitude: 15.5, azimuth: 120.0, is_visible: true },
@@ -316,7 +343,7 @@ describe('AstronomyScene - With Data Loaded', () => {
           moon: { altitude: 40.0, azimuth: 235.0, is_visible: true },
           moon_phase: { illumination: 0.76, phase_angle: 91.0, phase_name: 'Waxing Gibbous' },
         },
-      ],
+      ]),
       metadata: {
         location: { latitude: 51.5, longitude: -0.1, elevation: 0 },
         frame_count: 2,
@@ -378,10 +405,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       
       // Set up data with 1-hour interval (2023-01-01 00:00:00 to 01:00:00)
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -396,10 +423,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T00:30:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -413,10 +440,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-02T00:00:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -431,10 +458,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       
       // Set up data with 1-minute interval (which scales to ~16.67ms, below minimum)
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T00:01:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -460,7 +487,7 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
     it('should use default interval when frames array is empty', () => {
       const vm = wrapper.vm as any;
       
-      mockData.value = { frames: [] };
+      mockData.value = { frames: withMoonPhase([]) };
       mockHasData.value = true;
       
       vm.calculateFrameInterval();
@@ -472,9 +499,9 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -488,10 +515,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       
       // Use strings that will definitely create invalid dates
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '', sun: {}, moon: {} },
           { datetime: 'not-a-valid-date-format', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -505,10 +532,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: 'not-a-valid-date', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -525,10 +552,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -548,10 +575,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T02:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} }, // Earlier than first
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -572,10 +599,10 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
+        frames: withMoonPhase([
           { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
           { datetime: '2023-01-01T01:00:00Z', sun: {}, moon: {} },
-        ],
+        ]),
       };
       mockHasData.value = true;
       
@@ -593,10 +620,20 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       const vm = wrapper.vm as any;
       
       mockData.value = {
-        frames: [
-          { datetime: '2023-01-01T00:00:00Z', sun: {}, moon: {} },
-          { datetime: '2023-01-01T06:00:00Z', sun: {}, moon: {} },
-        ],
+        frames: withMoonPhase([
+          {
+            datetime: '2023-01-01T00:00:00Z',
+            sun: {},
+            moon: {},
+            moon_phase: { phase_name: 'Full Moon', illumination: 1.0 }
+          },
+          {
+            datetime: '2023-01-01T06:00:00Z',
+            sun: {},
+            moon: {},
+            moon_phase: { phase_name: 'Full Moon', illumination: 1.0 }
+          },
+        ]),
       };
       mockHasData.value = true;
       
@@ -619,10 +656,20 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       
       // Update mock data to simulate data being loaded
       mockData.value = {
-        frames: [
-          { datetime: '2023-01-01T00:00:00Z', sun: { az: 0, alt: 0 }, moon: { az: 0, alt: 0 } },
-          { datetime: '2023-01-01T02:00:00Z', sun: { az: 0, alt: 0 }, moon: { az: 0, alt: 0 } },
-        ],
+        frames: withMoonPhase([
+          {
+            datetime: '2023-01-01T00:00:00Z',
+            sun: { az: 0, alt: 0 },
+            moon: { az: 0, alt: 0 },
+            moon_phase: { phase_name: 'Full Moon', illumination: 1.0 }
+          },
+          {
+            datetime: '2023-01-01T02:00:00Z',
+            sun: { az: 0, alt: 0 },
+            moon: { az: 0, alt: 0 },
+            moon_phase: { phase_name: 'Full Moon', illumination: 1.0 }
+          },
+        ]),
       };
       mockHasData.value = true;
       
