@@ -17,7 +17,16 @@
       <h2>Sun and Moon Animation from Earth</h2>
       
       <div v-if="loading" class="loading">
-        Loading data...
+        <div class="progress-bar-container">
+          <div class="progress-bar" :style="{ width: (sseProgress * 100).toFixed(1) + '%' }"></div>
+          <span class="progress-text" v-if="sseExpectedFrameCount > 0">
+            {{ sseFrames.length }}/{{ sseExpectedFrameCount }}
+          </span>
+        </div>
+        <div class="progress-label">
+          Loading data... <span v-if="sseExpectedFrameCount > 0">{{ Math.round(sseProgress * 100) }}%</span>
+        </div>
+        <button class="cancel-btn" @click="cancelSSE" type="button">Cancel</button>
       </div>
       
       <div v-if="error" class="error">
@@ -172,7 +181,7 @@ const framesPerDay = ref(48);
 // Canvas reference
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 // API data
-const { data, loading, error, hasData, frameCount, fetchBatchObservations, clearData: clearApiData } = useAstronomyData();
+const { data, loading, error, hasData, frameCount, fetchBatchObservationsSSE, cancelSSE, clearData: clearApiData, sseProgress, sseExpectedFrameCount, sseFrames } = useAstronomyData();
   // Animation state
 let sceneManager: SceneManager | null = null;
 let sun: Sun | null = null;
@@ -324,7 +333,9 @@ onUnmounted(() => {
 
 // Load data from API
 async function loadData() {
-  await fetchBatchObservations(params.value);
+  console.log('[loadData] Called with params:', JSON.parse(JSON.stringify(params.value)));
+  await fetchBatchObservationsSSE(params.value);
+  console.log('[loadData] fetchBatchObservationsSSE resolved. hasData:', hasData.value, 'sseFrames:', sseFrames.value.length, 'sseExpectedFrameCount:', sseExpectedFrameCount.value);
   if (hasData.value) {
     if (!canvasRef.value) {
       await nextTick();
@@ -361,6 +372,14 @@ async function loadData() {
     }
   }
 }
+
+// Debug: Watch for changes in loading, sseFrames, sseExpectedFrameCount
+watch([loading, sseFrames, sseExpectedFrameCount], ([loadingVal, framesVal, expectedVal]) => {
+  const debugLoggingEnabled = false; // Set to true to enable detailed logging
+  if (debugLoggingEnabled) {
+    console.log('[watch] loading:', loadingVal, 'sseFrames.length:', framesVal.length, 'sseExpectedFrameCount:', expectedVal);
+  }
+});
 
 // Calculate the time interval between frames based on actual datetime values
 // Fixes #11: Animation now respects the actual time intervals in the data
@@ -758,14 +777,3036 @@ button:disabled {
   width: 100%;
 }
 
-@media (max-width: 600px) {
-  .scene-layout {
-    padding: 8px;
-  }
-  .map-panel, .date-range-panel {
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-  }
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+}
+.progress-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1em;
+  color: #000;
+  background: transparent;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #2196f3 100%);
+  transition: width 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.view-toggle button {
+  flex: 1;
+  margin-bottom: 0;
+  background: #333;
+}
+
+.view-toggle button.active {
+  background: #0066cc;
+  font-weight: bold;
+}
+
+.view-toggle button:hover:not(.active) {
+  background: #444;
+}
+
+button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.loading {
+  padding: 10px;
+  background: rgba(255, 165, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.error {
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.current-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #555;
+  font-size: 0.85em;
+}
+
+.current-info p {
+  margin: 5px 0;
+}
+.scene-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-row {
+  display: block;
+}
+
+.map-panel {
+  min-width: 300px;
+  width: 100%;
+}
+
+.date-range-row {
+  margin-top: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.date-range-panel {
+  min-width: 220px;
+  max-width: 350px;
+  width: 100%;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+}
+.progress-bar {
+  /* ...existing styles... */
+  position: relative;
+}
+.progress-text {
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
