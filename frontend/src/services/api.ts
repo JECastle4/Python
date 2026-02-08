@@ -1,4 +1,6 @@
 import { API_CONFIG, API_ENDPOINTS } from './config';
+// ...existing code...
+export { API_CONFIG };
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
 /**

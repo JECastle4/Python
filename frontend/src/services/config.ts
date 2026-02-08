@@ -22,11 +22,6 @@ if (!import.meta.env.DEV) {
   }
 }
 
-// TODO (#14): Improve loading UX with per-endpoint timeouts and progress indicators
-// - Batch operations: Keep 30s timeout but add progress/spinner
-// - Single operations: Reduce to 10-15s timeout
-// - Consider streaming/chunked responses for large batches
-// - Add request cancellation capability
 export const API_CONFIG: ApiConfig = {
   baseUrl,
   timeout: 30000,

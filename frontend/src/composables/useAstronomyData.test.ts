@@ -15,10 +15,17 @@ vi.mock('@/services/api', () => ({
       super(message);
       this.name = 'ApiError';
     }
-  },
+  }
 }));
 
 describe('useAstronomyData', () => {
+    it('should handle cancelSSE when no EventSource', () => {
+      const { cancelSSE, error, loading } = useAstronomyData();
+      // currentEventSource is null by default
+      cancelSSE();
+      expect(error.value).toBeNull();
+      expect(loading.value).toBe(false);
+    });
   const mockResponse: BatchEarthObservationsResponse = {
     frames: [
       {
@@ -42,6 +49,133 @@ describe('useAstronomyData', () => {
       time_span_hours: 1.0,
     },
   };
+
+  it('should handle SSE frame and metadata events', async () => {
+    const { fetchBatchObservationsSSE, sseFrames, sseExpectedFrameCount, data, loading, sseProgress } = useAstronomyData();
+    // Mock EventSource
+    let frameListener: ((event: any) => void) | undefined;
+    let metadataListener: ((event: any) => void) | undefined;
+    const addEventListener = (type: string, cb: (event: any) => void) => {
+      if (type === 'frame') frameListener = cb;
+      if (type === 'metadata') metadataListener = cb;
+    };
+    const origEventSource = globalThis.EventSource;
+    class MockEventSource {
+      static CONNECTING = 0;
+      static OPEN = 1;
+      static CLOSED = 2;
+      addEventListener = addEventListener;
+      close = vi.fn();
+      onopen = null;
+      onerror = null;
+      constructor(_url: string) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    // Prepare params
+    const params = {
+      latitude: 51.5,
+      longitude: -0.1,
+      start_date: '2026-02-02',
+      start_time: '00:00:00',
+      end_date: '2026-02-02',
+      end_time: '01:00:00',
+      frame_count: 2,
+    };
+    const promise = fetchBatchObservationsSSE(params);
+    // Simulate SSE events
+    const frame1 = { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} };
+    const frame2 = { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} };
+    const metadata = { frame_count: 2, location: { latitude: 51.5, longitude: -0.1, elevation: 0 } };
+    await Promise.resolve(); // allow listeners to be set
+    if (frameListener) frameListener({ data: JSON.stringify(frame1) });
+    expect(sseFrames.value.length).toBe(1);
+    expect(sseProgress.value).toBeLessThan(1);
+    if (metadataListener) metadataListener({ data: JSON.stringify(metadata) });
+    expect(sseExpectedFrameCount.value).toBe(2);
+    if (frameListener) frameListener({ data: JSON.stringify(frame2) });
+    await promise;
+    expect(data.value).not.toBeNull();
+    expect(data.value?.frames.length).toBe(2);
+    expect(data.value?.metadata.frame_count).toBe(2);
+    expect(loading.value).toBe(false);
+    expect(sseProgress.value).toBe(1);
+    globalThis.EventSource = origEventSource;
+  });
+
+  it('should handle SSE error event', async () => {
+    const { fetchBatchObservationsSSE, error, loading } = useAstronomyData();
+    const origEventSource = globalThis.EventSource;
+    let eventSourceInstance: any = null;
+    class MockEventSource {
+      static CONNECTING = 0;
+      static OPEN = 1;
+      static CLOSED = 2;
+      close = vi.fn();
+      onopen = null;
+      onerror = null;
+      constructor(_url: string) {
+        eventSourceInstance = this;
+      }
+      addEventListener(_type: string, _cb: (event: any) => void) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    const params = {
+      latitude: 51.5,
+      longitude: -0.1,
+      start_date: '2026-02-02',
+      start_time: '00:00:00',
+      end_date: '2026-02-02',
+      end_time: '01:00:00',
+      frame_count: 1,
+    };
+    const promise = fetchBatchObservationsSSE(params);
+    await Promise.resolve();
+    // Simulate error event by calling onerror on the EventSource instance
+    if (eventSourceInstance && typeof eventSourceInstance.onerror === 'function') {
+      eventSourceInstance.onerror({});
+    }
+    await expect(promise).rejects.toThrow('SSE connection error');
+    expect(error.value).toBe('SSE connection error');
+    expect(loading.value).toBe(false);
+    globalThis.EventSource = origEventSource;
+  });
+
+  it('should cancel SSE loading', async () => {
+    const { fetchBatchObservationsSSE, cancelSSE, error, loading } = useAstronomyData();
+    // Mock EventSource
+    const mockEventSource: any = {
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      onopen: null,
+      onerror: null,
+    };
+    const origEventSource = globalThis.EventSource;
+    class MockEventSource {
+      static CONNECTING = 0;
+      static OPEN = 1;
+      static CLOSED = 2;
+      addEventListener = mockEventSource.addEventListener;
+      close = mockEventSource.close;
+      onopen = null;
+      onerror = null;
+      constructor(_url: string) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    const params = {
+      latitude: 51.5,
+      longitude: -0.1,
+      start_date: '2026-02-02',
+      start_time: '00:00:00',
+      end_date: '2026-02-02',
+      end_time: '01:00:00',
+      frame_count: 1,
+    };
+    fetchBatchObservationsSSE(params);
+    cancelSSE();
+    expect(error.value).toBe('Loading cancelled by user.');
+    expect(loading.value).toBe(false);
+    globalThis.EventSource = origEventSource;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
