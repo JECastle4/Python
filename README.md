@@ -14,7 +14,6 @@ $env:PYTHONPATH="." ; pytest tests/ --cov=. --cov-report=xml --cov-report=term-m
 cd frontend
 npm run type-check
 npm run test:coverage
-npm run test:ui
 npm run test:e2e
 
 
