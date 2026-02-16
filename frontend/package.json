@@ -18,7 +18,7 @@
     "test:e2e:update-snapshots": "playwright test --update-snapshots"
   },
   "dependencies": {
-    "ol": "^10.7.0",
+    "ol": "^10.8.0",
     "three": "^0.182.0",
     "vue": "^3.5.28"
   },
