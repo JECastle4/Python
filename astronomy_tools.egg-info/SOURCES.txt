@@ -5,7 +5,11 @@ api/main.py
 api/models.py
 api/routes.py
 api/services/__init__.py
+api/services/batch_earth_observations.py
 api/services/dates.py
+api/services/moon.py
+api/services/moon_phase.py
+api/services/sun.py
 astronomy_tools.egg-info/PKG-INFO
 astronomy_tools.egg-info/SOURCES.txt
 astronomy_tools.egg-info/dependency_links.txt
@@ -15,6 +19,10 @@ tests/test_DayOfTheWeek.py
 tests/test_MoonPhase.py
 tests/test_MoonRiseAndSet.py
 tests/test_SunRiseAndSet.py
+tests/test_api_batch_earth_observations.py
 tests/test_api_dates.py
+tests/test_api_moon.py
+tests/test_api_moon_phase.py
 tests/test_api_routes.py
+tests/test_api_sun.py
 tests/test_moon_rise_set_helpers.py
