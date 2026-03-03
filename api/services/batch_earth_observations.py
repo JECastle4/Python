@@ -42,6 +42,8 @@ def calculate_batch_earth_observations(
     # Validate frame count
     if frame_count < 2:
         raise ValueError(f"frame_count must be at least 2, got {frame_count}")
+    if frame_count > 10000:
+        raise ValueError(f"frame_count must be at most 10000, got {frame_count}")
     # Validate coordinates
     if not -90 <= latitude <= 90:
         raise ValueError(f"Latitude must be between -90 and 90 degrees, got {latitude}")

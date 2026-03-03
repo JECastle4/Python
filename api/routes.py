@@ -1,7 +1,8 @@
 """
 API routes for astronomy calculations
 """
-from fastapi import APIRouter, HTTPException, Request
+import json
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from api.models import (
     DateTimeRequest,
@@ -22,11 +23,8 @@ from api.services.moon_phase import calculate_moon_phase
 from api.services.batch_earth_observations import calculate_batch_earth_observations
 
 
-
 router = APIRouter()
-# SSE endpoint for batch earth observations
 
-from fastapi import Query
 
 @router.get(
     "/batch-earth-observations-stream",
@@ -42,14 +40,13 @@ async def stream_batch_earth_observations(
     start_time: str = Query(...),
     end_date: str = Query(...),
     end_time: str = Query(...),
-    frame_count: int = Query(...),
-    latitude: float = Query(...),
-    longitude: float = Query(...),
+    frame_count: int = Query(..., ge=2, le=10000),
+    latitude: float = Query(..., ge=-90.0, le=90.0),
+    longitude: float = Query(..., ge=-180.0, le=180.0),
     elevation: float = Query(0.0)
 ):
     try:
         def event_generator():
-            import json
             gen = calculate_batch_earth_observations(
                 start_date=start_date,
                 start_time=start_time,
