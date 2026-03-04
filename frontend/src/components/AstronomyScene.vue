@@ -147,6 +147,7 @@
           <p><strong>Moon Phase:</strong> {{ currentFrame.moon_phase.phase_name }}</p>
           <p><strong>Illumination:</strong> {{ (currentFrame.moon_phase.illumination * 100).toFixed(1) }}%</p>
         </div>
+        <MoonPhaseIndicator v-if="currentFrame" :phaseAngle="currentFrame.moon_phase.phase_angle" />
       </div>
     </div>
   </div>
@@ -157,6 +158,8 @@
 import { defineAsyncComponent } from 'vue';
 const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
 const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
+
+import MoonPhaseIndicator from './MoonPhaseIndicator.vue';
 
 // Form parameters with defaults
 const today = new Date();
@@ -809,5 +812,14 @@ button {
 
 .current-info p {
   margin: 5px 0;
+}
+
+.moon-phase-sphere-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 </style>
