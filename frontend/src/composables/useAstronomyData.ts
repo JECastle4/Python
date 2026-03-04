@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
 import { astronomyApi, ApiError } from '@/services/api';
 import { API_CONFIG } from '@/services/config';
-import type { BatchEarthObservationsResponse } from '@/types/api.types';
+import type { BatchEarthObservationsResponse, ObservationFrame } from '@/types/api.types';
 
 interface BatchObservationsParams {
   latitude: number;
@@ -25,7 +25,7 @@ export function useAstronomyData() {
   const hasData = computed(() => data.value !== null);
   const frameCount = computed(() => data.value?.metadata.frame_count ?? 0);
 
-  const sseFrames = ref<any[]>([]);
+  const sseFrames = ref<ObservationFrame[]>([]);
   const sseExpectedFrameCount = ref<number>(0);
   const sseProgress = computed(() => {
     if (sseExpectedFrameCount.value === 0) return 0;
