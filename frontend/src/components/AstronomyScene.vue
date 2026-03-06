@@ -155,7 +155,14 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { useAstronomyData } from '@/composables/useAstronomyData';
+import { SceneManager } from '@/three/scene';
+import { Sun } from '@/three/objects/Sun';
+import { Moon } from '@/three/objects/Moon';
+import { Earth } from '@/three/objects/Earth';
+import type { ObservationFrame } from '@/types/api.types';
+
 const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
 const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
 
@@ -213,7 +220,6 @@ function updateFrameCount() {
 }
 
 // Watch for changes in date range or framesPerDay
-import { watch } from 'vue';
 watch([
   () => params.value.start_date,
   () => params.value.end_date,
@@ -230,14 +236,6 @@ function onDateRangeSelected(dates: { start: Date, end: Date }) {
   params.value.start_date = dates.start.toISOString().slice(0, 10);
   params.value.end_date = dates.end.toISOString().slice(0, 10);
 }
-
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useAstronomyData } from '@/composables/useAstronomyData';
-import { SceneManager } from '@/three/scene';
-import { Sun } from '@/three/objects/Sun';
-import { Moon } from '@/three/objects/Moon';
-import { Earth } from '@/three/objects/Earth';
-import type { ObservationFrame } from '@/types/api.types';
 
 // Current frame
 const currentFrame = computed<ObservationFrame | null>(() => {
@@ -296,8 +294,6 @@ const initializeObjects = () => {
   }
 };
 
-import { nextTick } from 'vue';
-
 // Initialize Three.js scene when canvas is available (hasData becomes true)
 watch(
   () => hasData.value,
@@ -336,9 +332,7 @@ onUnmounted(() => {
 
 // Load data from API
 async function loadData() {
-  console.log('[loadData] Called with params:', JSON.parse(JSON.stringify(params.value)));
   await fetchBatchObservationsSSE(params.value);
-  console.log('[loadData] fetchBatchObservationsSSE resolved. hasData:', hasData.value, 'sseFrames:', sseFrames.value.length, 'sseExpectedFrameCount:', sseExpectedFrameCount.value);
   if (hasData.value) {
     if (!canvasRef.value) {
       await nextTick();
@@ -431,17 +425,8 @@ function updatePositions() {
   
   // Update visibility based on frame data
   if (sun) {
-    // Only show sun in 3D view if above horizon
-    sun.mesh.visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
-    sun.getLight().visible = (viewMode.value === 'SKY') ? frame.sun.is_visible : frame.sun.is_visible;
-    if (viewMode.value === '3D') {
-      // Optionally: Only show sun in 3D if above horizon
-      sun.mesh.visible = frame.sun.is_visible;
-      sun.getLight().visible = frame.sun.is_visible;
-    } else {
-      sun.mesh.visible = frame.sun.is_visible;
-      sun.getLight().visible = frame.sun.is_visible;
-    }
+    sun.mesh.visible = frame.sun.is_visible;
+    sun.getLight().visible = frame.sun.is_visible;
   }
   if (moon) {
     moon.mesh.visible = frame.moon.is_visible;
