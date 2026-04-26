@@ -44,7 +44,12 @@ jobs:
     
     - name: Dependency vulnerability scan - pip-audit
       run: |
-        pip-audit --desc
+        # --skip-editable: astronomy-tools is our own local package, not on PyPI
+        # --ignore-vuln CVE-2026-3219 (pip): no fix available as of 2026-04-26.
+        # CI upgrades pip to latest before this step; when a fix ships, the upgraded pip
+        # will satisfy the fix version and pip-audit will stop reporting this CVE.
+        # At that point, remove this flag.
+        pip-audit --desc --skip-editable --ignore-vuln CVE-2026-3219
     
     - name: Code quality - Pylint
       run: |
