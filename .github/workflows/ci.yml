@@ -91,7 +91,7 @@ jobs:
     - name: Run Trivy vulnerability scanner - Python dependencies
       # Using pinned version for stability while staying reasonably current
       # Update periodically to get new vulnerability definitions
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -102,7 +102,7 @@ jobs:
     
     - name: Run Trivy vulnerability scanner - npm dependencies
       # Using pinned version for same reason as above
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: 'fs'
         scan-ref: './frontend'
