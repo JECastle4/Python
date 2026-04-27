@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+# Security: wheel CVE-2026-24049 fixed in 0.46.2
+requires = ["setuptools>=82.0.1", "wheel>=0.46.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,11 +17,20 @@ dependencies = [
     "PyOpenGL-accelerate",
     "fastapi",
     "uvicorn[standard]",
+    # Security: CVE-2026-25990, CVE-2026-40192 fixed in 12.2.0
+    "pillow>=12.2.0",
+    # Security: CVE-2026-4539 fixed in 2.20.0
+    "pygments>=2.20.0",
+    # Security: CVE-2026-28684 fixed in 1.2.2
+    "python-dotenv>=1.2.2",
+    # Security: CVE-2026-25645 fixed in 2.33.0
+    "requests>=2.33.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
+    # Security: CVE-2025-71176 fixed in 9.0.3
+    "pytest>=9.0.3",
     "pytest-cov",
     "httpx",
 ]
