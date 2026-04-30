@@ -305,7 +305,7 @@ jobs:
     - name: Install Playwright Browsers
       run: |
         npx playwright install --with-deps
-        npx playwright install msedge --with-deps
+        npx playwright install msedge
 
     - name: Run Playwright E2E tests
       run: npm run test:e2e
