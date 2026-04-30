@@ -5,11 +5,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import * as THREE from 'three';
 
 const props = defineProps<{
   phaseAngle: number; // in degrees
+  elongationAngle?: number; // in degrees, 0=new, 180=full
+  brightLimbAngle?: number; // in degrees, east of north
 }>();
 
 const moonPhase3D = ref<HTMLCanvasElement | null>(null);
@@ -17,15 +19,53 @@ let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
 let camera: THREE.PerspectiveCamera | null = null;
 let moonMesh: THREE.Mesh | null = null;
-let light: THREE.DirectionalLight | null = null;
+let moonMaterial: THREE.ShaderMaterial | null = null;
+
+function renderScene() {
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
+}
+
+function disposeMoonPhaseScene() {
+  if (scene) {
+    scene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      const material = mesh.material;
+      if (Array.isArray(material)) {
+        material.forEach((m) => m.dispose());
+      } else if (material) {
+        material.dispose();
+      }
+    });
+  }
+
+  if (renderer) {
+    renderer.dispose();
+  }
+
+  renderer = null;
+  scene = null;
+  camera = null;
+  moonMesh = null;
+  moonMaterial = null;
+}
 
 function setupMoonPhaseScene() {
   if (!moonPhase3D.value) return;
-  // Clean up previous renderer if any
-  if (renderer) {
-    renderer.dispose();
-    renderer = null;
+
+  let hasWebGL = false;
+  try {
+    hasWebGL = !!(moonPhase3D.value.getContext('webgl2') || moonPhase3D.value.getContext('webgl'));
+  } catch {
+    hasWebGL = false;
   }
+  if (!hasWebGL) return;
+
+  disposeMoonPhaseScene();
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(30, 1, 0.1, 10);
   camera.position.set(0, 0, 3);
@@ -33,51 +73,80 @@ function setupMoonPhaseScene() {
 
   // Moon sphere
   const geometry = new THREE.SphereGeometry(1, 48, 48);
-  const material = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 5, specular : 0xffffff});
-  material.side = THREE.FrontSide;
-  moonMesh = new THREE.Mesh(geometry, material);
+  moonMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uLightDir: { value: new THREE.Vector3(0, 0, -1) },
+      uLitColor: { value: new THREE.Color(0xffffff) },
+      uDarkColor: { value: new THREE.Color(0x0f0f0f) },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uLightDir;
+      uniform vec3 uLitColor;
+      uniform vec3 uDarkColor;
+      varying vec3 vNormal;
+      void main() {
+        float ndl = dot(normalize(vNormal), normalize(uLightDir));
+        float lit = step(0.0, ndl);
+        vec3 color = mix(uDarkColor, uLitColor, lit);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+  });
+  moonMaterial.side = THREE.FrontSide;
+  moonMesh = new THREE.Mesh(geometry, moonMaterial);
   scene.add(moonMesh);
 
-  // Directional light for phase
-  light = new THREE.DirectionalLight(0xffffff, 1.0);
-  light.target.position.set(0, 0, 0);
-  scene.add(light);
-  scene.add(light.target);
-
-  // Ambient light for subtle fill
-  //scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-
-  renderer = new THREE.WebGLRenderer({ canvas: moonPhase3D.value, alpha: true, antialias: true });
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: moonPhase3D.value, alpha: true, antialias: true });
+  } catch {
+    renderer = null;
+    return;
+  }
   renderer.setSize(80, 80, false);
   renderer.setClearColor(0x222222, 1);
 
   updateLighting();
-  renderer.render(scene, camera);
+  renderScene();
 }
 
 function updateLighting() {
-  if (!light) return;
-  // Phase angle: 0 = new moon (sun behind moon), 180 = full moon (sun in front)
-  const phaseRad = (props.phaseAngle * Math.PI) / 180;
-  // Light rotates around Y axis
-  console.log(phaseRad, -Math.sin(phaseRad), -Math.cos(phaseRad));
-  light.position.set(-Math.sin(phaseRad),0,  -Math.cos(phaseRad));
-  light.position.normalize();
-  // Rotate the moon so the terminator is correct
-  //if (moonMesh) {
-  //  moonMesh.rotation.y = phaseRad;
-  //}
+  if (!moonMaterial) return;
+  const normalizedPhase = ((props.phaseAngle % 360) + 360) % 360;
+  const fallbackElongation = normalizedPhase <= 180 ? normalizedPhase : 360 - normalizedPhase;
+  const elongation = props.elongationAngle ?? fallbackElongation;
+  const elongationRad = (elongation * Math.PI) / 180;
+  const limbRad = ((props.brightLimbAngle ?? 0) * Math.PI) / 180;
+
+  // Bright limb angle already encodes waxing/waning orientation in the sky.
+  const lightInPlane = Math.sin(elongationRad);
+  const lightZ = -Math.cos(elongationRad);
+
+  // Position angle is measured north through east; for sky-disk rendering, east is screen-left.
+  const rotatedX = -lightInPlane * Math.sin(limbRad);
+  const rotatedY = lightInPlane * Math.cos(limbRad);
+  console.log(rotatedX, rotatedY, lightZ);
+  const lightDir = moonMaterial.uniforms.uLightDir.value as THREE.Vector3;
+  lightDir.set(rotatedX, rotatedY, lightZ).normalize();
 }
 
 onMounted(() => {
   setupMoonPhaseScene();
 });
 
-watch(() => props.phaseAngle, () => {
+onUnmounted(() => {
+  disposeMoonPhaseScene();
+});
+
+watch(() => [props.phaseAngle, props.elongationAngle, props.brightLimbAngle], () => {
   updateLighting();
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
-  }
+  renderScene();
 });
 </script>
 

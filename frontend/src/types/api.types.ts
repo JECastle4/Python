@@ -11,7 +11,9 @@ export interface CelestialPosition {
 
 export interface MoonPhaseData {
   illumination: number;
+  elongation_angle?: number;
   phase_angle: number;
+  bright_limb_angle?: number;
   phase_name: string;
 }
 

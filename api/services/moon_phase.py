@@ -2,7 +2,7 @@
 
 import warnings
 from astropy.time import Time
-from astropy.coordinates import get_sun, get_body, EarthLocation
+from astropy.coordinates import get_sun, get_body, EarthLocation, AltAz
 from astropy.coordinates.baseframe import NonRotationTransformationWarning
 import astropy.units as u
 import numpy as np
@@ -31,6 +31,7 @@ def calculate_moon_phase(
     Returns:
         dict: Dictionary containing:
             - illumination: Fraction of moon illuminated (0.0 to 1.0)
+            - elongation_angle: Sun-Moon separation angle in degrees (0 to 180)
             - phase_angle: Moon's phase angle in ecliptic longitude (0 to 360 degrees)
             - phase_name: Textual name of the phase (e.g., "Waxing Crescent")
             - julian_date: Julian Date of the observation
@@ -98,6 +99,7 @@ def _process_moon_phase(
         # Elongation is the angular separation between sun and moon as seen from Earth
         # elongation=0° → new moon (illum=0), elongation=180° → full moon (illum=1)
         elongation = sun.separation(moon)
+        elongation_angle = float(elongation.deg)
         illumination = float(0.5 * (1 - np.cos(elongation.rad)))
 
         # Calculate phase angle from ecliptic longitudes
@@ -106,6 +108,16 @@ def _process_moon_phase(
         sun_lon = sun.geocentrictrueecliptic.lon.deg
         moon_lon = moon.geocentrictrueecliptic.lon.deg
         phase_angle = float((moon_lon - sun_lon) % 360)
+
+        # Compute the bright limb position angle in the local sky.
+        # This is the position angle of the Sun measured from the Moon, east of north.
+        location = EarthLocation(
+            lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m
+        )
+        altaz_frame = AltAz(obstime=time, location=location, pressure=0.0)
+        sun_altaz = sun.transform_to(altaz_frame)
+        moon_altaz = moon.transform_to(altaz_frame)
+        bright_limb_angle = float(moon_altaz.position_angle(sun_altaz).deg)
 
     # Determine phase name based on illumination and whether waxing/waning
     illum_pct = illumination * 100
@@ -135,8 +147,10 @@ def _process_moon_phase(
 
     return {
         "illumination": illumination,
+        "elongation_angle": elongation_angle,
         "phase_angle": phase_angle,
         "phase_name": phase_name,
+        "bright_limb_angle": bright_limb_angle,
         "julian_date": float(time.jd),
         "location": {
             "latitude": latitude,

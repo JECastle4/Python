@@ -421,35 +421,99 @@ class SkyDomeView:
         # Enable lighting for the 3D moon sphere
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
-        
-        # Calculate light direction based on phase angle
-        # Phase angle: 0° = new moon (sun behind moon from Earth), 180° = full moon (sun in front)
-        # Camera is at [0, 0, 5] looking at [0, 0, 0]
-        # At full moon (180°), light should come from camera side (positive Z)
-        # At new moon (0°), light should come from opposite side (negative Z)
-        phase_rad = np.radians(self.moon_phase_angle)
-        
-        # Light position based on phase angle (inverted from apparent phase angle)
-        # We rotate around Y axis (vertical)
-        light_x = -np.sin(phase_rad)  # Negative to invert
-        light_z = -np.cos(phase_rad)  # Negative to invert
-        light_pos = [light_x * 10, 0.0, light_z * 10, 0.0]  # Directional light (w=0)
-        
-        # Set up light properties
+
+        # --- Compute light direction from real sky geometry ---
+        # Convert alt/az to a unit vector in the local horizontal frame (East, North, Up).
+        # az=0°=N, az=90°=E: east=cos(alt)*sin(az), north=cos(alt)*cos(az), up=sin(alt)
+        def altaz_to_vec(alt_deg, az_deg):
+            alt_r = np.radians(alt_deg)
+            az_r = np.radians(az_deg)
+            return np.array([
+                np.cos(alt_r) * np.sin(az_r),  # East
+                np.cos(alt_r) * np.cos(az_r),  # North
+                np.sin(alt_r),                  # Up
+            ])
+
+        sun_vec = altaz_to_vec(self.sun_alt, self.sun_az)
+        moon_vec = altaz_to_vec(self.moon_alt, self.moon_az)
+
+        # Build the indicator's camera basis in horizontal-frame coordinates.
+        # The indicator camera sits on the +Z axis (world [0,0,5]) looking at the origin.
+        # Indicator +Z  = "toward Earth from moon"  =  -moon_vec
+        # Indicator +Y  = screen up  =  local zenith projected ⊥ to iz
+        # Indicator +X  = screen right  =  cross(iy, iz)   [right-handed: X = Y × Z]
+        iz = -moon_vec
+        iz_len = np.linalg.norm(iz)
+        iz = iz / iz_len if iz_len > 1e-6 else np.array([0.0, 0.0, -1.0])
+
+        zenith = np.array([0.0, 0.0, 1.0])
+        iy = zenith - np.dot(zenith, iz) * iz
+        iy_len = np.linalg.norm(iy)
+        if iy_len > 1e-6:
+            iy = iy / iy_len
+        else:
+            # Moon is at or near zenith; fall back to North as the screen-up direction
+            north = np.array([0.0, 1.0, 0.0])
+            iy = north - np.dot(north, iz) * iz
+            iy = iy / np.linalg.norm(iy)
+
+        ix = np.cross(iy, iz)
+        ix = ix / np.linalg.norm(ix)
+
+        # Compute the light direction at the Moon using consistent geometry.
+        # We need the Sun direction as seen from the Moon, not from the observer.
+        # Both vectors are in the same local horizontal frame, so the Moon->Sun
+        # direction is (sun_vec - moon_vec).
+        light_vec = sun_vec - moon_vec
+        light_len = np.linalg.norm(light_vec)
+        if light_len > 1e-6:
+            light_vec = light_vec / light_len
+        else:
+            light_vec = np.array([0.0, 0.0, 1.0])
+
+        # Project the Moon->Sun direction onto the indicator basis.
+        # gluLookAt here is a pure Z-translation (no rotation), so indicator world space
+        # equals eye space for directional light purposes.
+        light_pos = [
+            float(np.dot(light_vec, ix)),   # X: screen right/left
+            float(np.dot(light_vec, iy)),   # Y: screen up/down
+            float(np.dot(light_vec, iz)),   # Z: toward viewer / away
+            0.0,                            # w=0 → directional (infinitely distant) light
+        ]
+
+        # Set up light properties.
+        # Specular is set to zero: a non-zero specular term produces a view-dependent
+        # hotspot that grows/shrinks as the phase angle changes along the camera axis,
+        # creating the illusion that the light source is moving closer and farther away.
         glLightfv(GL_LIGHT0, GL_POSITION, light_pos)
-        glLightfv(GL_LIGHT0, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, [1.0, 1.0, 1.0, 1.0])
-        glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
-        
+        glLightfv(GL_LIGHT0, GL_AMBIENT,  [0.15, 0.15, 0.15, 1.0])
+        glLightfv(GL_LIGHT0, GL_DIFFUSE,  [1.0,  1.0,  1.0,  1.0])
+        glLightfv(GL_LIGHT0, GL_SPECULAR, [0.0,  0.0,  0.0,  1.0])
+
+        # GL_COLOR_MATERIAL only tracks ambient+diffuse; suppress specular on the
+        # material explicitly so no residual specular leaks through.
+        glMaterialfv(GL_FRONT, GL_SPECULAR, [0.0, 0.0, 0.0, 1.0])
+        glMaterialfv(GL_FRONT, GL_SHININESS, [0.0])
+
         # Draw the moon sphere
         glColor3f(0.7, 0.7, 0.7)  # Gray color for moon
         quadric = gluNewQuadric()
         gluQuadricNormals(quadric, GLU_SMOOTH)
         gluSphere(quadric, 1.0, 32, 32)
         gluDeleteQuadric(quadric)
-        
-        # Disable lighting for text
+
+        # Draw a thin outline at the sphere's silhouette circle so the dark limb
+        # remains visible against the dark background at new moon.
         glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+        glLineWidth(1.5)
+        glColor4f(0.5, 0.5, 0.5, 0.8)
+        glBegin(GL_LINE_LOOP)
+        for i in range(64):
+            a = 2.0 * math.pi * i / 64
+            glVertex3f(math.cos(a), math.sin(a), 0.0)
+        glEnd()
+        glEnable(GL_DEPTH_TEST)
         
         # Restore projection
         glMatrixMode(GL_PROJECTION)

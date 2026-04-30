@@ -1,6 +1,7 @@
 # tests/test_MoonPhase.py
 from MoonPhase import moon_phase, moon_phase_angle, moon_phase_name
 from astropy.time import Time
+from api.services.moon_phase import calculate_moon_phase
 import numpy as np
 
 
@@ -20,15 +21,24 @@ def test_moon_phase_cycle_february_2025():
     phase_angles = []
     phase_names = []
     illuminations = []
+    bright_limb_angles = []
     
     for time in times:
         angle = moon_phase_angle(time)
         name = moon_phase_name(time)
         illum = moon_phase(time)
+        phase_data = calculate_moon_phase(
+            date_str=time.to_datetime().strftime("%Y-%m-%d"),
+            time_str="00:00:00",
+            latitude=51.5,
+            longitude=-0.1,
+            elevation=0.0,
+        )
         
         phase_angles.append(angle)
         phase_names.append(name)
         illuminations.append(illum)
+        bright_limb_angles.append(phase_data["bright_limb_angle"])
     
     # Test 1: Phase angles should progress through a cycle
     # (may wrap around 0/360, so check for general progression)
@@ -70,8 +80,12 @@ def test_moon_phase_cycle_february_2025():
     
     # Should have at least 3 distinct phases over 28 days
     assert len(unique_phases_in_order) >= 3, f"Should see at least 3 distinct phases, got {len(unique_phases_in_order)}"
+
+    # Test 4: Bright limb angle should not be zero.
+    for i, bright_limb_angle in enumerate(bright_limb_angles):
+        assert bright_limb_angle != 0.0, f"Day {i}: bright_limb_angle should not be zero"
     
-    # Test 4: Verify phase progression is monotonic (allowing for 360° wrap)
+    # Test 5: Verify phase progression is monotonic (allowing for 360° wrap)
     # Check that phase angle generally increases (with possible wrap from 360 to 0)
     for i in range(1, len(phase_angles)):
         prev_angle = phase_angles[i-1]

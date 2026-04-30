@@ -202,9 +202,21 @@ class MoonPhaseResponse(BaseModel):
         ge=0.0,
         le=1.0
     )
+    elongation_angle: float = Field(
+        ...,
+        description="Sun-Moon separation angle in degrees (0=new moon, 180=full moon)",
+        ge=0.0,
+        le=180.0
+    )
     phase_angle: float = Field(
         ...,
         description="Moon's phase angle in ecliptic longitude (0-180=waxing, 180-360=waning)",
+        ge=0.0,
+        lt=360.0
+    )
+    bright_limb_angle: float = Field(
+        ...,
+        description="Bright limb position angle in local sky coordinates, east of north (degrees)",
         ge=0.0,
         lt=360.0
     )
@@ -312,7 +324,9 @@ class CelestialPosition(BaseModel):
 class MoonPhaseData(BaseModel):
     """Moon phase information"""
     illumination: float = Field(..., ge=0.0, le=1.0, description="Illumination fraction")
+    elongation_angle: float = Field(..., ge=0.0, le=180.0, description="Sun-Moon separation angle in degrees")
     phase_angle: float = Field(..., ge=0.0, lt=360.0, description="Phase angle in degrees")
+    bright_limb_angle: float = Field(..., ge=0.0, lt=360.0, description="Bright limb angle in degrees, east of north")
     phase_name: str = Field(..., description="Name of the moon phase")
 
 

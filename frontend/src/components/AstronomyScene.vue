@@ -147,7 +147,12 @@
           <p><strong>Moon Phase:</strong> {{ currentFrame.moon_phase.phase_name }}</p>
           <p><strong>Illumination:</strong> {{ (currentFrame.moon_phase.illumination * 100).toFixed(1) }}%</p>
         </div>
-        <MoonPhaseIndicator v-if="currentFrame" :phaseAngle="currentFrame.moon_phase.phase_angle" />
+        <MoonPhaseIndicator
+          v-if="currentFrame"
+          :phaseAngle="currentFrame.moon_phase.phase_angle ?? 0"
+          :elongationAngle="currentFrame.moon_phase.elongation_angle"
+          :brightLimbAngle="currentFrame.moon_phase.bright_limb_angle ?? 0"
+        />
       </div>
     </div>
   </div>

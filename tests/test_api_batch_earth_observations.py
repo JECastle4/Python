@@ -56,8 +56,12 @@ def test_basic_batch_calculation():
     assert "is_visible" in first_frame["moon"]
     # Check moon phase structure
     assert "illumination" in first_frame["moon_phase"]
+    assert "elongation_angle" in first_frame["moon_phase"]
     assert "phase_angle" in first_frame["moon_phase"]
+    assert "bright_limb_angle" in first_frame["moon_phase"]
     assert "phase_name" in first_frame["moon_phase"]
+    assert first_frame["moon_phase"]["bright_limb_angle"] != 0.0
+    assert 0.0 <= first_frame["moon_phase"]["bright_limb_angle"] < 360.0
     assert first_frame["datetime"] == "2024-01-01T12:00:00"
     # Check metadata
     assert result["metadata"]["frame_count"] == 7
