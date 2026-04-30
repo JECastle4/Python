@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { astronomyApi, ApiError } from '@/services/api';
+import type { AstronomyApi } from '@/services/api';
 import { API_CONFIG } from '@/services/config';
 import type { BatchEarthObservationsResponse, ObservationFrame } from '@/types/api.types';
 
@@ -17,7 +18,7 @@ interface BatchObservationsParams {
 /**
  * Composable for fetching and managing astronomy data
  */
-export function useAstronomyData() {
+export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   const data = ref<BatchEarthObservationsResponse | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -119,7 +120,7 @@ export function useAstronomyData() {
     error.value = null;
 
     try {
-      const response = await astronomyApi.getBatchEarthObservations(params);
+      const response = await api.getBatchEarthObservations(params);
       data.value = response;
     } catch (err) {
       if (err instanceof ApiError) {

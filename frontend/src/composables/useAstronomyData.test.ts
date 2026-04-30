@@ -1,22 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useAstronomyData } from '@/composables/useAstronomyData';
-import { astronomyApi, ApiError } from '@/services/api';
+import { ApiError } from '@/services/api';
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
-// Mock the API module
-// TODO (#12): Consider refactoring to use dependency injection or vi.doMock() for better test isolation
-// Module-level mocks persist across test files, which can cause test pollution
-vi.mock('@/services/api', () => ({
-  astronomyApi: {
-    getBatchEarthObservations: vi.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    constructor(public status: number, public statusText: string, message: string) {
-      super(message);
-      this.name = 'ApiError';
-    }
-  }
-}));
+
 
 describe('useAstronomyData', () => {
     it('should handle cancelSSE when no EventSource', () => {
@@ -196,9 +183,9 @@ describe('useAstronomyData', () => {
   });
 
   it('should successfully fetch batch observations', async () => {
-    vi.mocked(astronomyApi.getBatchEarthObservations).mockResolvedValueOnce(mockResponse);
+    const mockApi = { getBatchEarthObservations: vi.fn().mockResolvedValueOnce(mockResponse) };
 
-    const { data, loading, error, hasData, frameCount, fetchBatchObservations } = useAstronomyData();
+    const { data, loading, error, hasData, frameCount, fetchBatchObservations } = useAstronomyData(mockApi);
 
     const params = {
       latitude: 51.5,
@@ -223,14 +210,14 @@ describe('useAstronomyData', () => {
     expect(error.value).toBeNull();
     expect(hasData.value).toBe(true);
     expect(frameCount.value).toBe(2);
-    expect(astronomyApi.getBatchEarthObservations).toHaveBeenCalledWith(params);
+    expect(mockApi.getBatchEarthObservations).toHaveBeenCalledWith(params);
   });
 
   it('should handle ApiError correctly', async () => {
     const apiError = new ApiError(400, 'Bad Request', 'Invalid parameters');
-    vi.mocked(astronomyApi.getBatchEarthObservations).mockRejectedValueOnce(apiError);
+    const mockApi = { getBatchEarthObservations: vi.fn().mockRejectedValueOnce(apiError) };
 
-    const { data, loading, error, hasData, fetchBatchObservations } = useAstronomyData();
+    const { data, loading, error, hasData, fetchBatchObservations } = useAstronomyData(mockApi);
 
     const params = {
       latitude: 91.0, // Invalid
@@ -252,9 +239,9 @@ describe('useAstronomyData', () => {
 
   it('should handle generic Error correctly', async () => {
     const genericError = new Error('Network failure');
-    vi.mocked(astronomyApi.getBatchEarthObservations).mockRejectedValueOnce(genericError);
+    const mockApi = { getBatchEarthObservations: vi.fn().mockRejectedValueOnce(genericError) };
 
-    const { error, fetchBatchObservations } = useAstronomyData();
+    const { error, fetchBatchObservations } = useAstronomyData(mockApi);
 
     await fetchBatchObservations({
       latitude: 51.5,
@@ -270,9 +257,9 @@ describe('useAstronomyData', () => {
   });
 
   it('should handle unknown error type', async () => {
-    vi.mocked(astronomyApi.getBatchEarthObservations).mockRejectedValueOnce('string error');
+    const mockApi = { getBatchEarthObservations: vi.fn().mockRejectedValueOnce('string error') };
 
-    const { error, fetchBatchObservations } = useAstronomyData();
+    const { error, fetchBatchObservations } = useAstronomyData(mockApi);
 
     await fetchBatchObservations({
       latitude: 51.5,
@@ -301,9 +288,9 @@ describe('useAstronomyData', () => {
   });
 
   it('should update frameCount when data changes', async () => {
-    vi.mocked(astronomyApi.getBatchEarthObservations).mockResolvedValueOnce(mockResponse);
+    const mockApi = { getBatchEarthObservations: vi.fn().mockResolvedValueOnce(mockResponse) };
 
-    const { frameCount, fetchBatchObservations } = useAstronomyData();
+    const { frameCount, fetchBatchObservations } = useAstronomyData(mockApi);
 
     expect(frameCount.value).toBe(0);
 

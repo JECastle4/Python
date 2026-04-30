@@ -18,7 +18,7 @@ export class ApiError extends Error {
   }
 }
 
-interface BatchObservationsParams {
+export interface BatchObservationsParams {
   latitude: number;
   longitude: number;
   start_date: string;
@@ -89,6 +89,10 @@ export class AstronomyApiClient {
       throw new Error('Unknown error occurred');
     }
   }
+}
+
+export interface AstronomyApi {
+  getBatchEarthObservations(params: BatchObservationsParams): Promise<BatchEarthObservationsResponse>;
 }
 
 // Export singleton instance
