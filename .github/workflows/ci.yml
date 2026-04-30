@@ -75,19 +75,33 @@ jobs:
     - name: Report Radon warning if complexity issues found
       if: always()
       run: |
-        if [ -f radon-mi-report.txt ] && [ -f radon-cc-report.txt ]; then
-          MI=$(grep -oP 'Average:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
-          # Check for functions/modules with high complexity (grade D or F)
-          HAS_HIGH_COMPLEXITY=$(grep -E '^\s+\w+\s+\(.*\)\s+-\s+[DF]$' radon-cc-report.txt | wc -l)
-          
-          # Warn if MI is below threshold (70) or high complexity functions exist
-          if [ ! -z "$MI" ] && (( $(echo "$MI < 70" | bc -l) )) || [ "$HAS_HIGH_COMPLEXITY" -gt 0 ]; then
-            WARNING="Code maintainability index: $MI"
-            if [ "$HAS_HIGH_COMPLEXITY" -gt 0 ]; then
-              WARNING="$WARNING | High complexity functions/modules detected: $HAS_HIGH_COMPLEXITY"
-            fi
-            echo "::warning::$WARNING (lower MI or high complexity indicates maintenance risk)"
+        HAS_ISSUES=false
+        WARNING=""
+        
+        # Check for high complexity (grade D or F)
+        if [ -f radon-cc-report.txt ]; then
+          HIGH_COMPLEXITY=$(radon cc . -a -nb --min D 2>/dev/null | grep -v '^$' | wc -l)
+          if [ "$HIGH_COMPLEXITY" -gt 0 ]; then
+            HAS_ISSUES=true
+            WARNING="High complexity functions/modules detected ($HIGH_COMPLEXITY)"
           fi
+        fi
+        
+        # Check maintainability index against threshold
+        if [ -f radon-mi-report.txt ]; then
+          MI=$(grep -oP 'Average maintainability index:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
+          if [ ! -z "$MI" ] && (( $(echo "$MI < 70" | bc -l) )); then
+            HAS_ISSUES=true
+            if [ -z "$WARNING" ]; then
+              WARNING="Maintainability index: $MI (aim for ≥70)"
+            else
+              WARNING="$WARNING | Maintainability index: $MI (aim for ≥70)"
+            fi
+          fi
+        fi
+        
+        if [ "$HAS_ISSUES" = true ]; then
+          echo "::warning::$WARNING"
         fi
     
     - name: Upload coverage reports
