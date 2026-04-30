@@ -84,7 +84,10 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
           eventSource.close();
           currentEventSource = null;
           toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
-          resolve();
+          // Delay resolve to allow toast to display before scene transition (300ms)
+          setTimeout(() => {
+            resolve();
+          }, 300);
         }
       }
     });

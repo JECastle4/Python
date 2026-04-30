@@ -50,6 +50,17 @@ test.describe('Astronomy Scene - Initial Load', () => {
     // Wait for the loading message to disappear (success or error)
     await expect(loadingMessage).not.toBeVisible({ timeout: 30000 });
 
+    // Check for success toast notification (appears when loading completes)
+    const successToast = page.locator('.Toastify__toast--success, [class*="toast"][class*="success"]');
+    const toastVisible = await successToast.isVisible().catch(() => false);
+    
+    if (toastVisible) {
+      // If toast exists, verify it shows the frame count
+      const toastText = await successToast.textContent();
+      console.log('Success toast message:', toastText);
+      await expect(successToast).toContainText('Successfully loaded');
+    }
+
     // Check if there's an error message (backend not running or API error)
     const errorMessage = page.locator('.error');
     const hasError = await errorMessage.isVisible();

@@ -316,4 +316,42 @@ describe('useAstronomyData', () => {
 
     expect(frameCount.value).toBe(2);
   });
+
+  it('should calculate sseProgress correctly', () => {
+    const { sseFrames, sseExpectedFrameCount, sseProgress } = useAstronomyData();
+
+    // Initial: zero frame count
+    expect(sseProgress.value).toBe(0);
+
+    // Set expected frame count
+    sseExpectedFrameCount.value = 4;
+
+    // Add frames one by one and check progress
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
+    ];
+    expect(sseProgress.value).toBe(0.25);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
+    ];
+    expect(sseProgress.value).toBe(0.5);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T02:00:00', sun: {}, moon: {}, moon_phase: {} },
+    ];
+    expect(sseProgress.value).toBe(0.75);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T02:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T03:00:00', sun: {}, moon: {}, moon_phase: {} },
+    ];
+    expect(sseProgress.value).toBe(1);
+  });
 });
+
