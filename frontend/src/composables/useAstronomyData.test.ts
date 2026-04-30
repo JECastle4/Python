@@ -320,6 +320,9 @@ describe('useAstronomyData', () => {
   it('should calculate sseProgress correctly', () => {
     const { sseFrames, sseExpectedFrameCount, sseProgress } = useAstronomyData();
 
+    const mockCelestialPosition = { altitude: 45, azimuth: 180, is_visible: true };
+    const mockMoonPhase = { illumination: 0.5, phase_angle: 90, phase_name: 'Waxing Gibbous' };
+
     // Initial: zero frame count
     expect(sseProgress.value).toBe(0);
 
@@ -328,28 +331,28 @@ describe('useAstronomyData', () => {
 
     // Add frames one by one and check progress
     sseFrames.value = [
-      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
     ];
     expect(sseProgress.value).toBe(0.25);
 
     sseFrames.value = [
-      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
     ];
     expect(sseProgress.value).toBe(0.5);
 
     sseFrames.value = [
-      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T02:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T02:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
     ];
     expect(sseProgress.value).toBe(0.75);
 
     sseFrames.value = [
-      { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T01:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T02:00:00', sun: {}, moon: {}, moon_phase: {} },
-      { datetime: '2026-02-02T03:00:00', sun: {}, moon: {}, moon_phase: {} },
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T02:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T03:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
     ];
     expect(sseProgress.value).toBe(1);
   });
