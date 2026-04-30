@@ -40,7 +40,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
 
-  // Configure projects for different browsers (Chrome and Firefox)
+  // Configure projects for different browsers (Chromium, Firefox, WebKit, and Edge)
   projects: [
     {
       name: 'chromium',
