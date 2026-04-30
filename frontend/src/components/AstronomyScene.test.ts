@@ -2,7 +2,12 @@
 function withMoonPhase(frames: any[]): any[] {
   return frames.map(frame => ({
     ...frame,
-    moon_phase: frame.moon_phase || { phase_name: 'Full Moon', illumination: 1.0, phase_angle: 0 },
+    moon_phase: frame.moon_phase || {
+      phase_name: 'Full Moon',
+      illumination: 1.0,
+      phase_angle: 0,
+      bright_limb_angle: 0,
+    },
   }));
 }
 import { describe, it, expect, vi, beforeEach } from 'vitest';

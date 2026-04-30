@@ -15,20 +15,26 @@ def test_moon_phase_basic():
     )
 
     assert "illumination" in result
+    assert "elongation_angle" in result
     assert "phase_angle" in result
+    assert "bright_limb_angle" in result
     assert "phase_name" in result
     assert "julian_date" in result
     assert "location" in result
     assert "input_datetime" in result
 
     assert isinstance(result["illumination"], float)
+    assert isinstance(result["elongation_angle"], float)
     assert isinstance(result["phase_angle"], float)
+    assert isinstance(result["bright_limb_angle"], float)
     assert isinstance(result["phase_name"], str)
     assert isinstance(result["julian_date"], float)
 
     # Check value ranges
     assert 0.0 <= result["illumination"] <= 1.0
+    assert 0.0 <= result["elongation_angle"] <= 180.0
     assert 0.0 <= result["phase_angle"] < 360.0
+    assert 0.0 <= result["bright_limb_angle"] < 360.0
 
 
 def test_new_moon_illumination():

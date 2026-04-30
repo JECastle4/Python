@@ -117,7 +117,9 @@ def calculate_batch_earth_observations(
             },
             "moon_phase": {
                 "illumination": phase_data["illumination"],
+                "elongation_angle": phase_data["elongation_angle"],
                 "phase_angle": phase_data["phase_angle"],
+                "bright_limb_angle": phase_data["bright_limb_angle"],
                 "phase_name": phase_data["phase_name"]
             }
         }
