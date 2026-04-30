@@ -98,29 +98,12 @@ jobs:
         if [ -s radon-mi-report.txt ]; then
           MI=$(grep -oP 'Average maintainability index:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
           if [ -n "$MI" ]; then
-            if MI_VALUE="$MI" python3 - <<'PY'
-import os
-import sys
-
-mi = os.environ.get("MI_VALUE", "").strip()
-try:
-    value = float(mi)
-except ValueError:
-    sys.exit(2)
-
-sys.exit(0 if value < 70 else 1)
-PY
-            then
+            if python3 -c "import sys; sys.exit(0 if float('${MI}') < 70 else 1)"; then
               HAS_ISSUES=true
               if [ -z "$WARNING" ]; then
                 WARNING="Maintainability index: $MI (aim for ≥70)"
               else
                 WARNING="$WARNING | Maintainability index: $MI (aim for ≥70)"
-              fi
-            else
-              MI_CHECK_STATUS=$?
-              if [ "$MI_CHECK_STATUS" -eq 2 ]; then
-                echo "::warning::Could not parse maintainability index value: $MI"
               fi
             fi
           fi
