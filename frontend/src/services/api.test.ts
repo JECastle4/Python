@@ -169,6 +169,24 @@ describe('AstronomyApiClient', () => {
         })
       );
     });
+
+    it('should handle unknown error types', async () => {
+      // Edge case: mock fetch to reject with a non-Error object
+      // This tests the fallback error handler
+      fetchMock.mockRejectedValueOnce('string error');
+
+      const params = {
+        latitude: 51.5,
+        longitude: -0.1,
+        start_date: '2026-02-02',
+        start_time: '00:00:00',
+        end_date: '2026-02-02',
+        end_time: '01:00:00',
+        frame_count: 1,
+      };
+
+      await expect(client.getBatchEarthObservations(params)).rejects.toThrow('Unknown error occurred');
+    });
   });
 
   describe('ApiError', () => {

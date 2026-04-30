@@ -3,6 +3,7 @@ import { astronomyApi, ApiError } from '@/services/api';
 import type { AstronomyApi, BatchObservationsParams } from '@/services/api';
 import { API_CONFIG } from '@/services/config';
 import type { BatchEarthObservationsResponse, ObservationFrame } from '@/types/api.types';
+import { useToast } from './useToast';
 
 /**
  * Composable for fetching and managing astronomy data
@@ -11,6 +12,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   const data = ref<BatchEarthObservationsResponse | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
+  const toast = useToast();
 
   const hasData = computed(() => data.value !== null);
   const frameCount = computed(() => data.value?.metadata.frame_count ?? 0);
@@ -71,6 +73,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
         loading.value = false;
         eventSource.close();
         currentEventSource = null;
+        toast.error('Failed to load observations: Connection error');
         reject(new Error('SSE connection error'));
       };
 
@@ -80,6 +83,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
           loading.value = false;
           eventSource.close();
           currentEventSource = null;
+          toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
           resolve();
         }
       }
@@ -102,17 +106,17 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
     try {
       const response = await api.getBatchEarthObservations(params);
       data.value = response;
+      toast.success(`Successfully loaded ${response.metadata.frame_count} frames`);
     } catch (err) {
       if (err instanceof ApiError) {
         error.value = `API Error (${err.status}): ${err.message}`;
+        toast.error(error.value);
       } else if (err instanceof Error) {
         error.value = err.message;
+        toast.error(`Failed to load observations: ${error.value}`);
       } else {
         error.value = 'An unknown error occurred';
-      }
-      // Console logging only in development - see issue #13 for production error monitoring
-      if (import.meta.env.DEV) {
-        console.error('Failed to fetch astronomy data:', err);
+        toast.error(error.value);
       }
     } finally {
       loading.value = false;

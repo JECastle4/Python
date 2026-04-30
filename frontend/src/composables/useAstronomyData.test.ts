@@ -3,6 +3,16 @@ import { useAstronomyData } from '@/composables/useAstronomyData';
 import { ApiError } from '@/services/api';
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
+// Mock useToast composable
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  }),
+}));
+
 
 
 describe('useAstronomyData', () => {

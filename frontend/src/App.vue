@@ -1,9 +1,13 @@
 <template>
+  <ToastContainer />
   <AstronomyScene />
 </template>
 
 <script setup lang="ts">
 import AstronomyScene from '@/components/AstronomyScene.vue';
+// @ts-ignore - vue-toast doesn't have TypeScript types
+import { ToastContainer } from 'vue-toast';
+import 'vue-toast/dist/index.css';
 </script>
 
 <style>
