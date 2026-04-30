@@ -54,13 +54,33 @@ jobs:
         cat pylint-report.txt
       continue-on-error: true
     
+    - name: Report Pylint warning if issues found
+      run: |
+        if grep -q "Your code has been rated" pylint-report.txt; then
+          RATING=$(grep "Your code has been rated" pylint-report.txt)
+          echo "::warning::Code quality check complete - $RATING"
+        fi
+    
     - name: Complexity check - Radon
       run: |
-        radon cc . -a -nb
-        radon mi . -nb
+        radon cc . -a -nb > radon-cc-report.txt
+        radon mi . -nb > radon-mi-report.txt
+        cat radon-cc-report.txt
+        cat radon-mi-report.txt
       continue-on-error: true
     
+    - name: Report Radon warning if complexity issues found
+      if: always()
+      run: |
+        if [ -f radon-mi-report.txt ]; then
+          MI=$(grep -oP 'Average:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
+          if [ ! -z "$MI" ]; then
+            echo "::warning::Code maintainability index: $MI (lower is worse, aim for >70)"
+          fi
+        fi
+    
     - name: Upload coverage reports
+      id: codecov_backend
       uses: codecov/codecov-action@v6
       if: always()
       with:
@@ -68,6 +88,11 @@ jobs:
         flags: unittests
         name: codecov-umbrella
       continue-on-error: true
+    
+    - name: Report Codecov warning if upload failed
+      if: failure() && steps.codecov_backend.outcome == 'failure'
+      run: |
+        echo "::warning::Codecov upload failed - check https://app.codecov.io/ for details"
     
     - name: Upload security artifacts
       uses: actions/upload-artifact@v7
@@ -109,11 +134,17 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
     
     - name: Upload Trivy results to GitHub Security tab
+      id: trivy_upload
       uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: '.'
       continue-on-error: true
+    
+    - name: Report Trivy upload warning if failed
+      if: failure() && steps.trivy_upload.outcome == 'failure'
+      run: |
+        echo "::warning::Trivy results upload failed - check artifacts for trivy-python-results.sarif and trivy-npm-results.sarif"
     
     - name: Upload Trivy artifacts
       uses: actions/upload-artifact@v7
@@ -176,17 +207,19 @@ jobs:
       # - Exclusions: scene.ts (WebGL), config.ts (environment-dependent)
     
     - name: Upload coverage reports
+      id: codecov_frontend
       uses: codecov/codecov-action@v6
       if: always()
       with:
         files: ./frontend/coverage/coverage-final.json
         flags: frontend
         name: codecov-frontend
-      # TODO (#7): Remove continue-on-error after Codecov stability verified
-      # Currently prevents CI failures from Codecov service issues, but means upload
-      # failures won't be visible. Monitor Codecov dashboard for 10+ successful uploads,
-      # then remove this flag and close issue #7.
       continue-on-error: true
+    
+    - name: Report Codecov warning if upload failed
+      if: failure() && steps.codecov_frontend.outcome == 'failure'
+      run: |
+        echo "::warning::Codecov upload failed - check https://app.codecov.io/ for details"
     
     - name: Upload coverage artifacts
       uses: actions/upload-artifact@v7
