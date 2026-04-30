@@ -40,7 +40,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
 
-  // Configure projects for different browsers (Chromium only for now)
+  // Configure projects for different browsers (Chrome and Firefox)
   projects: [
     {
       name: 'chromium',
@@ -48,6 +48,28 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // Wait for network to be idle before considering navigation done
         // Important for API calls to complete before taking screenshots
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+    {
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+    {
+      name: 'edge',
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         viewport: { width: 1280, height: 720 },
       },
     },

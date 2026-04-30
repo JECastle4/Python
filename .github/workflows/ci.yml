@@ -303,7 +303,9 @@ jobs:
       working-directory: .
 
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: |
+        npx playwright install --with-deps
+        npx playwright install msedge --with-deps
 
     - name: Run Playwright E2E tests
       run: npm run test:e2e
@@ -315,4 +317,6 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: playwright-test-results
-        path: frontend/test-results/
+        path: |
+          frontend/test-results/
+          frontend/tests/e2e/astronomy-scene.spec.ts-snapshots/
