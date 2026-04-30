@@ -56,9 +56,12 @@ jobs:
     
     - name: Report Pylint warning if issues found
       run: |
-        if grep -q "Your code has been rated" pylint-report.txt; then
-          RATING=$(grep "Your code has been rated" pylint-report.txt)
-          echo "::warning::Code quality check complete - $RATING"
+        if [ -f pylint-report.txt ]; then
+          # Check for actual violations (lines starting with file:line: [CODE])
+          if grep -qE '^\S+:[0-9]+: \[[CRWEF]\]' pylint-report.txt; then
+            RATING=$(grep "Your code has been rated" pylint-report.txt)
+            echo "::warning::Code quality issues found - $RATING"
+          fi
         fi
     
     - name: Complexity check - Radon
@@ -72,10 +75,18 @@ jobs:
     - name: Report Radon warning if complexity issues found
       if: always()
       run: |
-        if [ -f radon-mi-report.txt ]; then
+        if [ -f radon-mi-report.txt ] && [ -f radon-cc-report.txt ]; then
           MI=$(grep -oP 'Average:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
-          if [ ! -z "$MI" ]; then
-            echo "::warning::Code maintainability index: $MI (lower is worse, aim for >70)"
+          # Check for functions/modules with high complexity (grade D or F)
+          HAS_HIGH_COMPLEXITY=$(grep -E '^\s+\w+\s+\(.*\)\s+-\s+[DF]$' radon-cc-report.txt | wc -l)
+          
+          # Warn if MI is below threshold (70) or high complexity functions exist
+          if [ ! -z "$MI" ] && (( $(echo "$MI < 70" | bc -l) )) || [ "$HAS_HIGH_COMPLEXITY" -gt 0 ]; then
+            WARNING="Code maintainability index: $MI"
+            if [ "$HAS_HIGH_COMPLEXITY" -gt 0 ]; then
+              WARNING="$WARNING | High complexity functions/modules detected: $HAS_HIGH_COMPLEXITY"
+            fi
+            echo "::warning::$WARNING (lower MI or high complexity indicates maintenance risk)"
           fi
         fi
     
@@ -90,7 +101,7 @@ jobs:
       continue-on-error: true
     
     - name: Report Codecov warning if upload failed
-      if: failure() && steps.codecov_backend.outcome == 'failure'
+      if: always() && steps.codecov_backend.outcome == 'failure'
       run: |
         echo "::warning::Codecov upload failed - check https://app.codecov.io/ for details"
     
@@ -217,7 +228,7 @@ jobs:
       continue-on-error: true
     
     - name: Report Codecov warning if upload failed
-      if: failure() && steps.codecov_frontend.outcome == 'failure'
+      if: always() && steps.codecov_frontend.outcome == 'failure'
       run: |
         echo "::warning::Codecov upload failed - check https://app.codecov.io/ for details"
     
