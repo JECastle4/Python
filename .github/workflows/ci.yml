@@ -65,6 +65,7 @@ jobs:
         fi
     
     - name: Complexity check - Radon
+      id: radon_check
       run: |
         radon cc . -a -nb > radon-cc-report.txt
         radon mi . -nb > radon-mi-report.txt
@@ -75,20 +76,26 @@ jobs:
     - name: Report Radon warning if complexity issues found
       if: always()
       run: |
+        # First check if Radon step itself failed
+        if [ "${{ steps.radon_check.outcome }}" = "failure" ]; then
+          echo "::warning::Radon complexity check failed - manual review may be needed"
+          exit 0
+        fi
+        
         HAS_ISSUES=false
         WARNING=""
         
-        # Check for high complexity (grade D or F)
-        if [ -f radon-cc-report.txt ]; then
-          HIGH_COMPLEXITY=$(radon cc . -a -nb --min D 2>/dev/null | grep -v '^$' | wc -l)
+        # Parse CC report for high complexity (grade D or F)
+        if [ -s radon-cc-report.txt ]; then
+          HIGH_COMPLEXITY=$(grep -E ' - [DF] \(' radon-cc-report.txt | wc -l)
           if [ "$HIGH_COMPLEXITY" -gt 0 ]; then
             HAS_ISSUES=true
             WARNING="High complexity functions/modules detected ($HIGH_COMPLEXITY)"
           fi
         fi
         
-        # Check maintainability index against threshold
-        if [ -f radon-mi-report.txt ]; then
+        # Parse MI report against threshold
+        if [ -s radon-mi-report.txt ]; then
           MI=$(grep -oP 'Average maintainability index:\s+\K[0-9.]+' radon-mi-report.txt | head -1)
           if [ ! -z "$MI" ] && (( $(echo "$MI < 70" | bc -l) )); then
             HAS_ISSUES=true
