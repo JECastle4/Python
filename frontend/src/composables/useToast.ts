@@ -1,5 +1,5 @@
 import { useToast as useToastNotification } from 'vue-toast-notification';
-cd fimport type { ActiveToast } from 'vue-toast-notification';
+import type { ActiveToast } from 'vue-toast-notification';
 import 'vue-toast-notification/dist/theme-default.css';
 
 /**
