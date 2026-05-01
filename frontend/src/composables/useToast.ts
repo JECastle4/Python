@@ -1,4 +1,5 @@
 import { useToast as useToastNotification } from 'vue-toast-notification';
+cd fimport type { ActiveToast } from 'vue-toast-notification';
 import 'vue-toast-notification/dist/theme-default.css';
 
 /**
@@ -9,8 +10,8 @@ export function useToast() {
   const toast = useToastNotification();
 
   return {
-    success: (message: string, duration = 3000) => {
-      toast.success(message, {
+    success: (message: string, duration = 3000): ActiveToast => {
+      return toast.success(message, {
         duration,
         position: 'top-right',
       });

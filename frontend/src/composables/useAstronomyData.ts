@@ -3,6 +3,7 @@ import { astronomyApi, ApiError } from '@/services/api';
 import type { AstronomyApi, BatchObservationsParams } from '@/services/api';
 import { API_CONFIG } from '@/services/config';
 import type { BatchEarthObservationsResponse, ObservationFrame } from '@/types/api.types';
+import type { ActiveToast } from 'vue-toast-notification';
 import { useToast } from './useToast';
 
 /**
@@ -25,6 +26,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   });
 
   let currentEventSource: EventSource | null = null;
+  let activeSuccessToast: ActiveToast | null = null;
 
   /**
    * Fetch batch earth observations via SSE
@@ -83,7 +85,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
           loading.value = false;
           eventSource.close();
           currentEventSource = null;
-          toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
+          activeSuccessToast = toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
           // Delay resolve to allow toast to display before scene transition (300ms)
           setTimeout(() => {
             resolve();
@@ -91,6 +93,11 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
         }
       }
     });
+  }
+
+  function dismissSuccessToast() {
+    activeSuccessToast?.dismiss();
+    activeSuccessToast = null;
   }
 
   function cancelSSE() {
@@ -141,6 +148,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
     fetchBatchObservationsSSE,
     cancelSSE,
     clearData,
+    dismissSuccessToast,
     sseFrames,
     sseExpectedFrameCount,
     sseProgress,

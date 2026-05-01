@@ -5,8 +5,8 @@ John's python code - probably astronomy related
 ## PowerShell terminal 1
 cd frontend; npm run dev
 ## Powershell terminal 2
-(may need to run:
-.\.venv\Scripts\Activate.ps1)
+may need to run:
+(.\.venv\Scripts\Activate.ps1)
 uvicorn api.main:app --reload --port 8000
 
 # To run tests:
