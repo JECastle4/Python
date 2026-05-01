@@ -32,6 +32,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
    * Fetch batch earth observations via SSE
    */
   async function fetchBatchObservationsSSE(params: BatchObservationsParams) {
+    dismissSuccessToast();
     loading.value = true;
     error.value = null;
     data.value = null;
@@ -79,17 +80,19 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
         reject(new Error('SSE connection error'));
       };
 
+      let completed = false;
+
       function checkCompletion() {
+        if (completed) return;
         if (metadata && sseFrames.value.length === sseExpectedFrameCount.value) {
+          completed = true;
           data.value = { frames: sseFrames.value, metadata };
           loading.value = false;
           eventSource.close();
           currentEventSource = null;
           activeSuccessToast = toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
           // Delay resolve to allow toast to display before scene transition (300ms)
-          setTimeout(() => {
-            resolve();
-          }, 300);
+          setTimeout(resolve, 300);
         }
       }
     });
@@ -101,6 +104,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   }
 
   function cancelSSE() {
+    dismissSuccessToast();
     if (currentEventSource) {
       currentEventSource.close();
       currentEventSource = null;
@@ -110,6 +114,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   }
 
   async function fetchBatchObservations(params: BatchObservationsParams) {
+    dismissSuccessToast();
     loading.value = true;
     error.value = null;
 
@@ -134,6 +139,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
   }
 
   function clearData() {
+    dismissSuccessToast();
     data.value = null;
     error.value = null;
   }
