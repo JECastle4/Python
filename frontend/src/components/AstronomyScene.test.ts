@@ -62,6 +62,7 @@ vi.mock('@/three/objects/Earth', () => ({
 import { ref } from 'vue';
 let mockFetchBatchObservations = vi.fn();
 let mockFetchBatchObservationsSSE = vi.fn();
+let mockDismissSuccessToast = vi.fn();
 let mockLoading = ref(false);
 let mockError = ref<string | null>(null);
 let mockData = ref<any>(null);
@@ -78,6 +79,8 @@ vi.mock('@/composables/useAstronomyData', () => ({
     data: mockData,
     fetchBatchObservations: mockFetchBatchObservations,
     fetchBatchObservationsSSE: mockFetchBatchObservationsSSE,
+    cancelSSE: vi.fn(),
+    dismissSuccessToast: mockDismissSuccessToast,
     hasData: mockHasData,
     frameCount: mockFrameCount,
     clearData: mockClearData,
@@ -94,6 +97,7 @@ describe('AstronomyScene - Form Validation', () => {
     // Reset mock state
     mockFetchBatchObservations = vi.fn();
     mockFetchBatchObservationsSSE = vi.fn();
+    mockDismissSuccessToast = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
@@ -299,6 +303,7 @@ describe('AstronomyScene - Data Loading', () => {
 
   beforeEach(() => {
     mockFetchBatchObservations = vi.fn();
+    mockDismissSuccessToast = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
@@ -391,6 +396,7 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
   beforeEach(() => {
     // Reset mock state
     mockFetchBatchObservations = vi.fn();
+    mockDismissSuccessToast = vi.fn();
     mockLoading.value = false;
     mockError.value = null;
     mockData.value = null;
@@ -678,6 +684,8 @@ describe('AstronomyScene - Frame Interval Calculation', () => {
       
       // After loading 2-hour interval data, should be 2000ms (2 hours scaled to 2 seconds)
       expect(vm.frameIntervalMs).toBe(2000);
+      // Success toast should be dismissed during scene transition
+      expect(mockDismissSuccessToast).toHaveBeenCalled();
     });
   });
 });

@@ -50,6 +50,22 @@ test.describe('Astronomy Scene - Initial Load', () => {
     // Wait for the loading message to disappear (success or error)
     await expect(loadingMessage).not.toBeVisible({ timeout: 30000 });
 
+    // Check for success toast notification (appears when loading completes)
+    // vue-toast-notification renders: <div class="v-toast__item v-toast__item--success ..."><p class="v-toast__text">...</p></div>
+    // The toast is optional (auto-dismissed before scene transition), so use a short timeout.
+    const successToast = page.locator('.v-toast__item--success');
+    const toastVisible = await successToast.isVisible({ timeout: 1000 }).catch((err: unknown) => {
+      if (err instanceof Error && err.message.includes('Timeout')) return false;
+      throw err;
+    });
+
+    if (toastVisible) {
+      // If toast exists, verify it shows the frame count
+      const toastText = await successToast.locator('.v-toast__text').textContent();
+      console.log('Success toast message:', toastText);
+      await expect(successToast.locator('.v-toast__text')).toContainText('Successfully loaded');
+    }
+
     // Check if there's an error message (backend not running or API error)
     const errorMessage = page.locator('.error');
     const hasError = await errorMessage.isVisible();

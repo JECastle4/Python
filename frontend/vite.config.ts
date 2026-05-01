@@ -23,13 +23,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: [
-            'vue'
-          ],
-          three: [
-            'three',
-          ]
+        manualChunks: (id) => {
+          if (id.includes('node_modules/vue')) {
+            return 'vendor';
+          }
+          if (id.includes('node_modules/three')) {
+            return 'three';
+          }
         },
       },
     },

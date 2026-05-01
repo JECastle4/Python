@@ -3,6 +3,17 @@ import { useAstronomyData } from '@/composables/useAstronomyData';
 import { ApiError } from '@/services/api';
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
+// Mock useToast composable
+const mockDismiss = vi.fn();
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    success: vi.fn(() => ({ dismiss: mockDismiss })),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  }),
+}));
+
 
 
 describe('useAstronomyData', () => {
@@ -86,6 +97,71 @@ describe('useAstronomyData', () => {
     expect(data.value?.metadata.frame_count).toBe(2);
     expect(loading.value).toBe(false);
     expect(sseProgress.value).toBe(1);
+    globalThis.EventSource = origEventSource;
+  });
+
+  it('should not re-run completion logic when a late frame arrives after completion', async () => {
+    const { fetchBatchObservationsSSE, data, sseFrames } = useAstronomyData();
+    let frameListener: ((event: any) => void) | undefined;
+    let metadataListener: ((event: any) => void) | undefined;
+    const origEventSource = globalThis.EventSource;
+    class MockEventSource {
+      static CONNECTING = 0; static OPEN = 1; static CLOSED = 2;
+      addEventListener = (type: string, cb: (event: any) => void) => {
+        if (type === 'frame') frameListener = cb;
+        if (type === 'metadata') metadataListener = cb;
+      };
+      close = vi.fn(); onopen = null; onerror = null;
+      constructor(_url: string) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    const params = { latitude: 51.5, longitude: -0.1, start_date: '2026-02-02', start_time: '00:00:00', end_date: '2026-02-02', end_time: '01:00:00', frame_count: 1 };
+    const promise = fetchBatchObservationsSSE(params);
+    await Promise.resolve();
+    const frame = { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} };
+    const metadata = { frame_count: 1, location: {} };
+    if (metadataListener) metadataListener({ data: JSON.stringify(metadata) });
+    if (frameListener) frameListener({ data: JSON.stringify(frame) }); // triggers completion
+    // Late duplicate frame fires after completed=true — hits the `if (completed) return` guard
+    if (frameListener) frameListener({ data: JSON.stringify(frame) });
+    await promise;
+    // data.value was frozen at completion with 1 frame; the late frame should not have updated it
+    expect(data.value?.frames.length).toBe(1);
+    // sseFrames has 2 entries (both raw events were received), confirming the guard fired
+    expect(sseFrames.value.length).toBe(2);
+    globalThis.EventSource = origEventSource;
+  });
+
+  it('should dismiss the active success toast when dismissSuccessToast is called', async () => {
+    const { fetchBatchObservationsSSE, dismissSuccessToast } = useAstronomyData();
+    let frameListener: ((event: any) => void) | undefined;
+    let metadataListener: ((event: any) => void) | undefined;
+    const origEventSource = globalThis.EventSource;
+    class MockEventSource {
+      static CONNECTING = 0; static OPEN = 1; static CLOSED = 2;
+      addEventListener = (type: string, cb: (event: any) => void) => {
+        if (type === 'frame') frameListener = cb;
+        if (type === 'metadata') metadataListener = cb;
+      };
+      close = vi.fn(); onopen = null; onerror = null;
+      constructor(_url: string) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    const params = { latitude: 51.5, longitude: -0.1, start_date: '2026-02-02', start_time: '00:00:00', end_date: '2026-02-02', end_time: '01:00:00', frame_count: 2 };
+    const promise = fetchBatchObservationsSSE(params);
+    await Promise.resolve();
+    const frame = { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} };
+    const metadata = { frame_count: 2, location: {} };
+    if (metadataListener) metadataListener({ data: JSON.stringify(metadata) });
+    if (frameListener) frameListener({ data: JSON.stringify(frame) });
+    if (frameListener) frameListener({ data: JSON.stringify(frame) });
+    await promise;
+    // Toast should have been created on success; dismiss it
+    dismissSuccessToast();
+    expect(mockDismiss).toHaveBeenCalledOnce();
+    // Calling again should be a no-op (activeSuccessToast is now null)
+    dismissSuccessToast();
+    expect(mockDismiss).toHaveBeenCalledOnce();
     globalThis.EventSource = origEventSource;
   });
 
@@ -306,4 +382,45 @@ describe('useAstronomyData', () => {
 
     expect(frameCount.value).toBe(2);
   });
+
+  it('should calculate sseProgress correctly', () => {
+    const { sseFrames, sseExpectedFrameCount, sseProgress } = useAstronomyData();
+
+    const mockCelestialPosition = { altitude: 45, azimuth: 180, is_visible: true };
+    const mockMoonPhase = { illumination: 0.5, phase_angle: 90, phase_name: 'Waxing Gibbous' };
+
+    // Initial: zero frame count
+    expect(sseProgress.value).toBe(0);
+
+    // Set expected frame count
+    sseExpectedFrameCount.value = 4;
+
+    // Add frames one by one and check progress
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+    ];
+    expect(sseProgress.value).toBe(0.25);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+    ];
+    expect(sseProgress.value).toBe(0.5);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T02:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+    ];
+    expect(sseProgress.value).toBe(0.75);
+
+    sseFrames.value = [
+      { datetime: '2026-02-02T00:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T01:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T02:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+      { datetime: '2026-02-02T03:00:00', sun: mockCelestialPosition, moon: mockCelestialPosition, moon_phase: mockMoonPhase },
+    ];
+    expect(sseProgress.value).toBe(1);
+  });
 });
+

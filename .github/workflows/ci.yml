@@ -319,3 +319,4 @@ jobs:
         name: playwright-test-results
         path: |
           frontend/test-results/
+          frontend/tests/e2e/astronomy-scene.spec.ts-snapshots/

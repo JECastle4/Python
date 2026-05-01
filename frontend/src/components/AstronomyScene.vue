@@ -188,7 +188,7 @@ const framesPerDay = ref(48);
 // Canvas reference
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 // API data
-const { data, loading, error, hasData, frameCount, fetchBatchObservationsSSE, cancelSSE, clearData: clearApiData, sseProgress, sseExpectedFrameCount, sseFrames } = useAstronomyData();
+const { data, loading, error, hasData, frameCount, fetchBatchObservationsSSE, cancelSSE, clearData: clearApiData, sseProgress, sseExpectedFrameCount, sseFrames, dismissSuccessToast } = useAstronomyData();
   // Animation state
 let sceneManager: SceneManager | null = null;
 let sun: Sun | null = null;
@@ -330,6 +330,8 @@ onUnmounted(() => {
 // Load data from API
 async function loadData() {
   await fetchBatchObservationsSSE(params.value);
+  // Dismiss success toast before scene transition for consistent Playwright screenshots
+  dismissSuccessToast();
   if (hasData.value) {
     if (!canvasRef.value) {
       await nextTick();
