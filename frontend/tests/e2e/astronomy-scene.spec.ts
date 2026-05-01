@@ -52,9 +52,13 @@ test.describe('Astronomy Scene - Initial Load', () => {
 
     // Check for success toast notification (appears when loading completes)
     // vue-toast-notification renders: <div class="v-toast__item v-toast__item--success ..."><p class="v-toast__text">...</p></div>
+    // The toast is optional (auto-dismissed before scene transition), so use a short timeout.
     const successToast = page.locator('.v-toast__item--success');
-    const toastVisible = await successToast.isVisible().catch(() => false);
-    
+    const toastVisible = await successToast.isVisible({ timeout: 1000 }).catch((err: unknown) => {
+      if (err instanceof Error && err.message.includes('Timeout')) return false;
+      throw err;
+    });
+
     if (toastVisible) {
       // If toast exists, verify it shows the frame count
       const toastText = await successToast.locator('.v-toast__text').textContent();

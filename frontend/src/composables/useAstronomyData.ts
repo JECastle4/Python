@@ -81,6 +81,7 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
       };
 
       let completed = false;
+      let completionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
       function checkCompletion() {
         if (completed) return;
@@ -92,7 +93,10 @@ export function useAstronomyData(api: AstronomyApi = astronomyApi) {
           currentEventSource = null;
           activeSuccessToast = toast.success(`Successfully loaded ${sseExpectedFrameCount.value} frames`);
           // Delay resolve to allow toast to display before scene transition (300ms)
-          setTimeout(resolve, 300);
+          completionTimeoutId = setTimeout(() => {
+            completionTimeoutId = null;
+            resolve();
+          }, 300);
         }
       }
     });
