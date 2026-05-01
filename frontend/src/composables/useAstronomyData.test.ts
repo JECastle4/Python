@@ -4,9 +4,10 @@ import { ApiError } from '@/services/api';
 import type { BatchEarthObservationsResponse } from '@/types/api.types';
 
 // Mock useToast composable
+const mockDismiss = vi.fn();
 vi.mock('@/composables/useToast', () => ({
   useToast: () => ({
-    success: vi.fn(),
+    success: vi.fn(() => ({ dismiss: mockDismiss })),
     error: vi.fn(),
     info: vi.fn(),
     warning: vi.fn(),
@@ -96,6 +97,39 @@ describe('useAstronomyData', () => {
     expect(data.value?.metadata.frame_count).toBe(2);
     expect(loading.value).toBe(false);
     expect(sseProgress.value).toBe(1);
+    globalThis.EventSource = origEventSource;
+  });
+
+  it('should dismiss the active success toast when dismissSuccessToast is called', async () => {
+    const { fetchBatchObservationsSSE, dismissSuccessToast } = useAstronomyData();
+    let frameListener: ((event: any) => void) | undefined;
+    let metadataListener: ((event: any) => void) | undefined;
+    const origEventSource = globalThis.EventSource;
+    class MockEventSource {
+      static CONNECTING = 0; static OPEN = 1; static CLOSED = 2;
+      addEventListener = (type: string, cb: (event: any) => void) => {
+        if (type === 'frame') frameListener = cb;
+        if (type === 'metadata') metadataListener = cb;
+      };
+      close = vi.fn(); onopen = null; onerror = null;
+      constructor(_url: string) {}
+    }
+    globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+    const params = { latitude: 51.5, longitude: -0.1, start_date: '2026-02-02', start_time: '00:00:00', end_date: '2026-02-02', end_time: '01:00:00', frame_count: 2 };
+    const promise = fetchBatchObservationsSSE(params);
+    await Promise.resolve();
+    const frame = { datetime: '2026-02-02T00:00:00', sun: {}, moon: {}, moon_phase: {} };
+    const metadata = { frame_count: 2, location: {} };
+    if (metadataListener) metadataListener({ data: JSON.stringify(metadata) });
+    if (frameListener) frameListener({ data: JSON.stringify(frame) });
+    if (frameListener) frameListener({ data: JSON.stringify(frame) });
+    await promise;
+    // Toast should have been created on success; dismiss it
+    dismissSuccessToast();
+    expect(mockDismiss).toHaveBeenCalledOnce();
+    // Calling again should be a no-op (activeSuccessToast is now null)
+    dismissSuccessToast();
+    expect(mockDismiss).toHaveBeenCalledOnce();
     globalThis.EventSource = origEventSource;
   });
 
