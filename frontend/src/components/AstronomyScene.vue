@@ -12,10 +12,9 @@
           @update:dates="onDateRangeSelected"
         />
       </div>
-      <h1 v-if="!hasData" class="page-heading">{{ t('app.title') }}</h1>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
-      <h2>Sun and Moon Animation from Earth</h2>
+      <h1 class="page-heading">{{ t('app.title') }}</h1>
       
       <div v-if="loading" class="loading">
         <div class="progress-bar-container">
@@ -735,10 +734,10 @@ button:disabled {
 }
 
 .page-heading {
-  margin: 16px 0 8px 16px;
-  font-size: 1.6rem;
+  margin: 0 0 12px 0;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #ffffff;
 }
 
 .date-range-panel {
