@@ -29,7 +29,7 @@ npm run test:e2e:debug
 npm run test:e2e:update-snapshots
 
 # Update Firefox-Linux golden screenshots (Linux only, requires xvfb-run and Mesa)
-npm run test:e2e:update-snapshots:firefox-linux
+LIBGL_ALWAYS_SOFTWARE=1 MESA_GL_VERSION_OVERRIDE=4.5 npm run test:e2e:update-snapshots:firefox-linux
 ```
 
 ## Prerequisites
