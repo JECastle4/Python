@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
   z-index: 1000 !important;
 }
 
-/* Ensure zoom buttons meet WCAG 2.5.5 touch target minimum (24×24px) */
+/* Ensure zoom buttons meet WCAG 2.5.8 target size minimum (24×24px) */
 :deep(.ol-zoom-in),
 :deep(.ol-zoom-out) {
   width: 24px !important;
