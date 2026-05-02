@@ -28,8 +28,8 @@ npm run test:e2e
 1. Catch obvious contrast/ARIA/semantic issues
 
 ## CI Gate (every PR)
-### axe linter + jest-axe
-1. Automated baseline: color, labels, ARIA syntax
+### eslint-plugin-vuejs-accessibility + jest-axe
+1. Automated baseline: accessibility linting plus axe-based test coverage for labels, ARIA, and semantics
 1. Prevent regressions
 
 ## Release Gate (before shipping)
