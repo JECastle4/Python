@@ -14,7 +14,7 @@ test.describe('Astronomy Scene - Initial Load', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify the main heading is present
-    await expect(page.getByRole('heading', { name: 'Sun and Moon Animation from Earth' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Astronomy Animation' })).toBeVisible();
 
     // Verify the input form is visible (indicating we haven't loaded data yet)
     await expect(page.locator('.input-form')).toBeVisible();
