@@ -315,14 +315,17 @@ jobs:
       env:
         CI: true
 
-    - name: Run Playwright E2E tests (Firefox – Mesa software rendering)
-      run: npx playwright test --project=firefox
+    - name: Run Playwright E2E tests (Firefox – Xvfb + Mesa software rendering)
+      run: |
+        # Firefox headless on Linux bypasses X11/GLX entirely, so LIBGL_ALWAYS_SOFTWARE
+        # never reaches Mesa and WebGL produces a blank canvas.  Running Firefox in
+        # headed mode behind an Xvfb virtual display restores the X11/GLX path; Mesa
+        # llvmpipe (CPU-based GL) then handles WebGL correctly.
+        # Xvfb is installed by `npx playwright install --with-deps` for Firefox on Ubuntu.
+        xvfb-run --server-args="-screen 0 1280x720x24" \
+          npx playwright test --project=firefox --headed
       env:
         CI: true
-        # Force Mesa software rendering so Firefox headless on Linux can use WebGL.
-        # Firefox blocks WebGL when no GPU is present; these env vars tell the Mesa
-        # stack to use llvmpipe (CPU-based) rather than failing.
-        # Scoped to Firefox only so Chromium/WebKit keep their default GPU/SwiftShader behavior.
         LIBGL_ALWAYS_SOFTWARE: '1'
         MESA_GL_VERSION_OVERRIDE: '4.5'
 

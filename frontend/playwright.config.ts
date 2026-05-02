@@ -57,16 +57,11 @@ export default defineConfig({
         ...devices['Desktop Firefox'],
         viewport: { width: 1280, height: 720 },
         launchOptions: {
-          // Known issue: Firefox headless on Linux does not render the Three.js
-          // WebGL canvas — the scene appears blank/white. Chromium has a built-in
-          // SwiftShader software fallback; Firefox does not and blocks WebGL when
-          // no GPU is detected. These prefs force Mesa llvmpipe/swrast (CPU-based)
-          // GL rendering installed via `npx playwright install --with-deps`.
-          //
-          // The workaround allows WebGL to initialise, but Three.js shader
-          // compilation on the first frame may still produce a blank frame under
-          // Mesa, so firefox-linux snapshots currently capture a white canvas.
-          // See GitHub issue: Firefox headless WebGL / Three.js (Issue #85).
+          // These prefs force WebGL on even when Firefox's internal heuristics
+          // would normally block it (e.g. when Mesa advertises a software renderer).
+          // Combined with LIBGL_ALWAYS_SOFTWARE=1 + MESA_GL_VERSION_OVERRIDE=4.5 and
+          // an Xvfb virtual display (see ci.yml), Firefox runs in headed mode against
+          // a real X11/GLX path so Mesa llvmpipe handles WebGL correctly.
           firefoxUserPrefs: {
             'dom.webgl.force-enabled': true,
             'webgl.force-enabled': true,

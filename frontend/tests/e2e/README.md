@@ -25,8 +25,11 @@ npm run test:e2e:headed
 # Debug tests
 npm run test:e2e:debug
 
-# Update golden screenshots
+# Update golden screenshots (all browsers except Firefox on Linux — see note below)
 npm run test:e2e:update-snapshots
+
+# Update Firefox-Linux golden screenshots (Linux only, requires xvfb-run and Mesa)
+LIBGL_ALWAYS_SOFTWARE=1 MESA_GL_VERSION_OVERRIDE=4.5 npm run test:e2e:update-snapshots:firefox-linux
 ```
 
 ## Prerequisites
@@ -44,6 +47,7 @@ Before running E2E tests, ensure:
 ## Golden Images
 
 Visual regression tests compare current screenshots against baseline "golden" images.
+Snapshots are named `<test>-<browser>-<platform>.png` (e.g. `3d-view-first-frame-firefox-linux.png`).
 
 ### First-time Setup
 1. Run `npm run test:e2e:update-snapshots` to generate initial golden images
@@ -55,6 +59,30 @@ When intentional visual changes are made:
 1. Run `npm run test:e2e:update-snapshots`
 2. Review the diff carefully
 3. Commit updated golden images
+
+### Firefox on Linux
+
+Firefox headless on Linux cannot initialise WebGL without a real X11 display — it bypasses
+the Mesa/GLX stack entirely, producing a blank canvas. The workaround is to run Firefox in
+headed mode behind an Xvfb virtual display with Mesa software rendering (`LIBGL_ALWAYS_SOFTWARE`).
+
+**Consequences for snapshot management:**
+
+- `npm run test:e2e:update-snapshots` run on Linux **without** Xvfb will regenerate
+  `*firefox-linux*` snapshots as blank white images. Do not commit those.
+- To regenerate Firefox-Linux snapshots on Linux, use the dedicated script instead:
+  ```bash
+  LIBGL_ALWAYS_SOFTWARE=1 MESA_GL_VERSION_OVERRIDE=4.5 npm run test:e2e:update-snapshots:firefox-linux
+  ```
+  This requires `xvfb-run` and Mesa (`mesa-utils` / `libgl1-mesa-dri`) to be installed.
+- On **Windows and macOS**, Firefox headless renders WebGL normally, so
+  `npm run test:e2e:update-snapshots` is fine for `*firefox-win32*` and `*firefox-darwin*`
+  snapshots but will not produce a `*firefox-linux*` snapshot at all.
+- The CI `frontend-e2e` job applies the Xvfb workaround automatically, so it is useful for
+  verifying Firefox-on-Linux rendering. However, its normal `playwright test` artifacts are
+  test results and diffs, not updated baselines. To refresh `*firefox-linux*` snapshots,
+  run `npm run test:e2e:update-snapshots:firefox-linux` on a Linux machine with `xvfb-run`
+  and Mesa installed, then review and commit the updated `*firefox-linux*.png` files.
 
 ## Tolerance
 
