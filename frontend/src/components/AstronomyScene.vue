@@ -656,6 +656,13 @@ canvas {
   font-size: 0.9em;
 }
 
+/* Hide the native calendar picker button on the side-panel date inputs.
+   The DateRangePicker on the map panel is the intended date-entry point. */
+.controls-panel input[type="date"]::-webkit-calendar-picker-indicator,
+.controls-panel input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 .form-group input.invalid {
   border-color: #ff4444;
   background: #331111;

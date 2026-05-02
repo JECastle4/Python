@@ -1,5 +1,5 @@
 <template>
-  <div ref="mapContainer" class="ol-map"></div>
+  <div ref="mapContainer" class="ol-map" tabindex="0"></div>
 </template>
 
 <script setup>
@@ -68,16 +68,16 @@ onMounted(() => {
     }),
     controls: [
       new Zoom(),
-      new Attribution({
-        collapsible: false,
-        className: 'ol-attribution bottom-left',
-      }),
       ...(props.enablePinTool ? [createPinToolControl(() => {
         pinMode = !pinMode
         // Optionally highlight button when active
         const img = document.querySelector('.map-pin-image')
         if (img)img.src = pinMode ? '/map-pin-selected.png' : '/map-pin.png'
-      })] : [])
+      })] : []),
+      new Attribution({
+        collapsible: false,
+        className: 'ol-attribution bottom-left',
+      }),
     ],
   })
 
