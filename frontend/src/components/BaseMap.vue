@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 .ol-pin-tool {
   position: absolute;
   left: 8px;
-  top: 60px;
+  top: 72px;
   z-index: 1001;
   display: flex;
   flex-direction: column;
@@ -146,7 +146,7 @@ onBeforeUnmount(() => {
   :global(.ol-pin-tool) {
     position: absolute;
     left: 8px;
-    top: 60px;
+    top: 72px;
     z-index: 1001;
     display: flex;
     flex-direction: column;
@@ -169,5 +169,18 @@ onBeforeUnmount(() => {
   opacity: 1 !important;
   visibility: visible !important;
   z-index: 1000 !important;
+}
+
+/* Ensure zoom buttons meet WCAG 2.5.5 touch target minimum (24×24px) */
+:deep(.ol-zoom-in),
+:deep(.ol-zoom-out) {
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 16px !important;
+}
+
+:deep(.ol-zoom-out) {
+  margin-top: 4px !important;
 }
 </style>

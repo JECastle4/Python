@@ -12,6 +12,7 @@
           @update:dates="onDateRangeSelected"
         />
       </div>
+      <h1 v-if="!hasData" class="page-heading">{{ t('app.title') }}</h1>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
       <h2>Sun and Moon Animation from Earth</h2>
@@ -159,6 +160,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAstronomyData } from '@/composables/useAstronomyData';
 import { SceneManager } from '@/three/scene';
 import { Sun } from '@/three/objects/Sun';
@@ -168,6 +170,8 @@ import type { ObservationFrame } from '@/types/api.types';
 
 const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
 const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
+
+const { t } = useI18n();
 
 // Form parameters with defaults
 const today = new Date();
@@ -669,7 +673,7 @@ button {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  background: #0066cc;
+  background: #004FA3;
   color: white;
   border: none;
   border-radius: 4px;
@@ -690,7 +694,7 @@ button {
 }
 
 .view-toggle button.active {
-  background: #0066cc;
+  background: #004FA3;
   font-weight: bold;
 }
 
@@ -699,7 +703,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #0052a3;
+  background: #003d82;
 }
 
 button:disabled {
@@ -728,6 +732,13 @@ button:disabled {
   width: 100%;
   display: flex;
   justify-content: flex-start;
+}
+
+.page-heading {
+  margin: 16px 0 8px 16px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1a1a1a;
 }
 
 .date-range-panel {
@@ -783,7 +794,7 @@ button {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  background: #0066cc;
+  background: #004FA3;
   color: white;
   border: none;
   border-radius: 4px;
