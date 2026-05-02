@@ -314,6 +314,11 @@ jobs:
       run: npm run test:e2e
       env:
         CI: true
+        # Force Mesa software rendering so Firefox headless on Linux can use WebGL.
+        # Firefox blocks WebGL when no GPU is present; these env vars tell the Mesa
+        # stack to use llvmpipe (CPU-based) rather than failing.
+        LIBGL_ALWAYS_SOFTWARE: '1'
+        MESA_GL_VERSION_OVERRIDE: '4.5'
 
     - name: Upload Playwright test results
       if: always()

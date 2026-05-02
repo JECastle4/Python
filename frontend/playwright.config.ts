@@ -56,6 +56,16 @@ export default defineConfig({
       use: {
         ...devices['Desktop Firefox'],
         viewport: { width: 1280, height: 720 },
+        launchOptions: {
+          // Firefox headless on Linux disables WebGL when no GPU is present.
+          // These prefs force Mesa software rendering (llvmpipe/swrast) which
+          // is available on the GitHub Actions ubuntu-latest runner via the
+          // Mesa packages installed by `npx playwright install --with-deps`.
+          firefoxUserPrefs: {
+            'dom.webgl.force-enabled': true,
+            'webgl.force-enabled': true,
+          },
+        },
       },
     },
     {
