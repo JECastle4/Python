@@ -35,8 +35,9 @@
       
       <div v-if="!hasData" class="input-form">
         <div class="form-group">
-          <label>Latitude:</label>
+          <label for="latitude">Latitude:</label>
           <input 
+            id="latitude"
             v-model.number="params.latitude" 
             type="number" 
               step="0.1"
@@ -51,8 +52,9 @@
         </div>
         
         <div class="form-group">
-          <label>Longitude:</label>
+          <label for="longitude">Longitude:</label>
           <input 
+            id="longitude"
             v-model.number="params.longitude" 
             type="number" 
             step="0.1"
@@ -67,29 +69,30 @@
         </div>
         
         <div class="form-group">
-          <label>Start Date:</label>
-          <input v-model="params.start_date" type="date" />
+          <label for="start-date">Start Date:</label>
+          <input id="start-date" v-model="params.start_date" type="date" />
         </div>
         
         <div class="form-group">
-          <label>Start Time:</label>
-          <input v-model="params.start_time" type="time" step="1" />
+          <label for="start-time">Start Time:</label>
+          <input id="start-time" v-model="params.start_time" type="time" step="1" />
         </div>
         
         <div class="form-group">
-          <label>End Date:</label>
-          <input v-model="params.end_date" type="date" />
+          <label for="end-date">End Date:</label>
+          <input id="end-date" v-model="params.end_date" type="date" />
         </div>
         
       
         <div class="form-group">
-          <label>End Time:</label>
-          <input v-model="params.end_time" type="time" step="1" />
+          <label for="end-time">End Time:</label>
+          <input id="end-time" v-model="params.end_time" type="time" step="1" />
         </div>
         
         <div class="form-group frames-per-day-group">
-          <label>Frames per day:</label>
+          <label for="frames-per-day">Frames per day:</label>
           <input
+            id="frames-per-day"
             v-model.number="framesPerDay"
             type="range"
             min="1"
@@ -100,8 +103,9 @@
         </div>
 
         <div class="form-group">
-          <label>Frame Count:</label>
+          <label for="frame-count">Frame Count:</label>
           <input
+            id="frame-count"
             v-model.number="params.frame_count"
             type="number"
             min="1"
@@ -133,8 +137,8 @@
         <button @click="clearData">New Query</button>
         
         <div class="form-group">
-          <label>Animation Speed:</label>
-          <input v-model.number="animationSpeed" type="range" min="0.1" max="5" step="0.1" />
+          <label for="animation-speed">Animation Speed:</label>
+          <input id="animation-speed" v-model.number="animationSpeed" type="range" min="0.1" max="5" step="0.1" />
           <span>{{ animationSpeed.toFixed(1) }}x</span>
         </div>
         

@@ -1,12 +1,12 @@
 <template>
   <div class="date-range-picker">
     <div class="calendar">
-      <label>Start Date</label>
-      <input type="date" v-model="startDateString" @change="validateDates" />
+      <label for="drp-start-date">Start Date</label>
+      <input id="drp-start-date" type="date" v-model="startDateString" @change="validateDates" />
     </div>
     <div class="calendar">
-      <label>End Date</label>
-      <input type="date" v-model="endDateString" @change="validateDates" />
+      <label for="drp-end-date">End Date</label>
+      <input id="drp-end-date" type="date" v-model="endDateString" @change="validateDates" />
     </div>
     <div v-if="errorMessage" class="error-message">
       <span class="error-icon" aria-label="Error">&#9888;</span>
