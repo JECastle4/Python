@@ -78,9 +78,11 @@ headed mode behind an Xvfb virtual display with Mesa software rendering (`LIBGL_
 - On **Windows and macOS**, Firefox headless renders WebGL normally, so
   `npm run test:e2e:update-snapshots` is fine for `*firefox-win32*` and `*firefox-darwin*`
   snapshots but will not produce a `*firefox-linux*` snapshot at all.
-- The CI `frontend-e2e` job applies the Xvfb workaround automatically and is the canonical
-  source for `*firefox-linux*` baselines. After a CI run passes, download the
-  `playwright-test-results` artifact and commit any updated `*firefox-linux*.png` files.
+- The CI `frontend-e2e` job applies the Xvfb workaround automatically, so it is useful for
+  verifying Firefox-on-Linux rendering. However, its normal `playwright test` artifacts are
+  test results and diffs, not updated baselines. To refresh `*firefox-linux*` snapshots,
+  run `npm run test:e2e:update-snapshots:firefox-linux` on a Linux machine with `xvfb-run`
+  and Mesa installed, then review and commit the updated `*firefox-linux*.png` files.
 
 ## Tolerance
 
