@@ -1,12 +1,12 @@
 <template>
   <div class="date-range-picker">
     <div class="calendar">
-      <label for="drp-start-date">Start Date</label>
-      <input id="drp-start-date" type="date" v-model="startDateString" @change="validateDates" />
+      <label :for="idPrefix + '-start'">Start Date</label>
+      <input :id="idPrefix + '-start'" type="date" v-model="startDateString" @change="validateDates" />
     </div>
     <div class="calendar">
-      <label for="drp-end-date">End Date</label>
-      <input id="drp-end-date" type="date" v-model="endDateString" @change="validateDates" />
+      <label :for="idPrefix + '-end'">End Date</label>
+      <input :id="idPrefix + '-end'" type="date" v-model="endDateString" @change="validateDates" />
     </div>
     <div v-if="errorMessage" class="error-message">
       <span class="error-icon" aria-label="Error">&#9888;</span>
@@ -19,6 +19,8 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue';
 
+let instanceCounter = 0;
+
 export default defineComponent({
   name: 'DateRangePicker',
   props: {
@@ -27,6 +29,7 @@ export default defineComponent({
   },
   emits: ['update:dates'],
   setup(props, { emit }) {
+    const idPrefix = `drp-${++instanceCounter}`;
     const startDateString = ref(props.initialStartDate);
     const endDateString = ref(props.initialEndDate);
     const errorMessage = ref('');
@@ -71,6 +74,7 @@ export default defineComponent({
     });
 
     return {
+      idPrefix,
       startDateString,
       endDateString,
       errorMessage,

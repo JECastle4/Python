@@ -16,7 +16,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:update-snapshots": "playwright test --update-snapshots",
-    "lint:a11y": "eslint src/"
+    "lint:a11y": "eslint \"src/**/*.vue\""
   },
   "dependencies": {
     "ol": "^10.9.0",

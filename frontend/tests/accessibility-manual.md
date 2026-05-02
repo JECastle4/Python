@@ -23,7 +23,7 @@ Test in any modern browser (Chromium / Edge are fine). No assistive technology r
 | K3 | With the map viewport focused, press **+** (or **>**), then **−** (or **<**). | Map zooms in then out (OpenLayers built-in `KeyboardZoom` interaction). |
 | K4 | Tab to **Zoom In** and press **Enter** or **Space**. | Map zooms in one level. |
 | K5 | Tab to **Zoom Out** and press **Enter** or **Space**. | Map zooms out one level. |
-| K6 | Tab to **Place Pin** and press **Enter** or **Space**. | Pin mode activates (button icon changes to the selected-pin image). **Note:** placing the pin itself requires a mouse click — there is no keyboard equivalent for the drop action. A crosshair overlay controlled by arrow keys and confirmed with Enter would address this (see issue #<!-- TODO: fill in issue number -->). |
+| K6 | Tab to **Place Pin** and press **Enter** or **Space**. | Pin mode activates (button icon changes to the selected-pin image). **Note:** placing the pin itself requires a mouse click — there is no keyboard equivalent for the drop action. A crosshair overlay controlled by arrow keys and confirmed with Enter would address this (see issue #85). |
 | K7 | With pin mode active, Tab back to **Place Pin** and press **Enter** or **Space** again. | Pin mode deactivates (icon reverts to the unselected-pin image). |
 | K8 | Tab to the **OpenStreetMap attribution link** and press **Enter**. | Browser follows the OSM copyright link. Return to the app and confirm focus is not permanently lost. |
 | K9 | Tab to **Latitude** input. Type `999`. Tab away. | Validation error message appears. Focus does not trap. |
@@ -96,7 +96,15 @@ Test with **one** of the following combinations (both are Chromium-based and beh
 | S13 | Click/activate **Load Data**. Immediately read the page. | "Loading data…" text is present and readable. Progress percentage is visible in text form (no screen-reader-only announcement is required, but the text must be reachable by virtual cursor). |
 | S14 | Tab to **Cancel** button while loading. | Announced as "Cancel, button". Activating it stops loading and returns to the form. |
 
-### 2.5 Animation Controls
+### 2.5 Map Viewport
+
+| # | Check | Expected |
+|---|-------|----------|
+| S21 | Tab to the **map viewport** (the first focusable element on the page). | Screen reader announces "Interactive map, application" (role + label). Immediately after the label, the description "Interactive map. Use the zoom controls or scroll to zoom. Click to place a pin when the pin tool is active." is read (via `aria-describedby`). |
+| S22 | While the map viewport is focused, press **Arrow** keys. | Map pans. No screen reader announcement is expected for individual pan steps — this is an `application` region. |
+| S23 | Tab away from the map viewport to the **Zoom In** button. | Announced as "Zoom In, button" (or the OL default "Zoom in" label). Focus leaves the application region cleanly. |
+
+### 2.6 Animation Controls
 
 | # | Check | Expected |
 |---|-------|----------|
@@ -112,6 +120,6 @@ Test with **one** of the following combinations (both are Chromium-based and beh
 ## 3. Pass / Fail Criteria
 
 - **Pass**: All checks in section 1 and at least one screen reader combination from section 2 pass.
-- **Fail**: Any focusable control is unreachable by keyboard, any focus indicator is invisible, or any form label/error is not announced by the screen reader.
+- **Fail**: Any focusable control is unreachable by keyboard, any focus indicator is invisible, any form label/error is not announced by the screen reader, or the map viewport is not announced with a meaningful name and role.
 
 Record results in a simple table or inline notes. Link to the relevant GitHub issue for any failures found.

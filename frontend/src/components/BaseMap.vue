@@ -1,5 +1,17 @@
 <template>
-  <div ref="mapContainer" class="ol-map" tabindex="0"></div>
+  <div class="ol-map-wrapper">
+    <span id="map-desc" class="sr-only">
+      Interactive map. Use the zoom controls or scroll to zoom. Click to place a pin when the pin tool is active.
+    </span>
+    <div
+      ref="mapContainer"
+      class="ol-map"
+      role="application"
+      aria-label="Interactive map"
+      aria-describedby="map-desc"
+      tabindex="0"
+    ></div>
+  </div>
 </template>
 
 <script setup>
@@ -182,5 +194,17 @@ onBeforeUnmount(() => {
 
 :deep(.ol-zoom-out) {
   margin-top: 4px !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

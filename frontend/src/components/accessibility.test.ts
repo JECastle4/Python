@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { ref } from 'vue';
@@ -78,6 +78,8 @@ function makeFrame() {
 // ── AstronomyScene ─────────────────────────────────────────────────────────────
 
 describe('Accessibility – AstronomyScene (form state)', () => {
+  let wrapper: ReturnType<typeof mount>;
+
   beforeEach(() => {
     mockLoading.value = false;
     mockError.value = null;
@@ -85,8 +87,12 @@ describe('Accessibility – AstronomyScene (form state)', () => {
     mockHasData.value = false;
   });
 
+  afterEach(() => {
+    wrapper?.unmount();
+  });
+
   it('has no axe violations in the input form state', async () => {
-    const wrapper = mount(AstronomyScene, { attachTo: document.body });
+    wrapper = mount(AstronomyScene, { attachTo: document.body });
     await flushPromises();
     const results = await axe(wrapper.element);
     expect(results).toHaveNoViolations();
@@ -94,6 +100,8 @@ describe('Accessibility – AstronomyScene (form state)', () => {
 });
 
 describe('Accessibility – AstronomyScene (animation-controls state)', () => {
+  let wrapper: ReturnType<typeof mount>;
+
   beforeEach(() => {
     mockLoading.value = false;
     mockError.value = null;
@@ -102,8 +110,12 @@ describe('Accessibility – AstronomyScene (animation-controls state)', () => {
     mockData.value = { frames: [makeFrame(), makeFrame()] };
   });
 
+  afterEach(() => {
+    wrapper?.unmount();
+  });
+
   it('has no axe violations in the animation controls state', async () => {
-    const wrapper = mount(AstronomyScene, { attachTo: document.body });
+    wrapper = mount(AstronomyScene, { attachTo: document.body });
     await flushPromises();
     const results = await axe(wrapper.element);
     expect(results).toHaveNoViolations();
@@ -113,8 +125,14 @@ describe('Accessibility – AstronomyScene (animation-controls state)', () => {
 // ── DateRangePicker ────────────────────────────────────────────────────────────
 
 describe('Accessibility – DateRangePicker', () => {
+  let wrapper: ReturnType<typeof mount>;
+
+  afterEach(() => {
+    wrapper?.unmount();
+  });
+
   it('has no axe violations', async () => {
-    const wrapper = mount(DateRangePicker, {
+    wrapper = mount(DateRangePicker, {
       props: { initialStartDate: '2026-01-01', initialEndDate: '2026-01-07' },
       attachTo: document.body,
     });

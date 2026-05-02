@@ -38,7 +38,8 @@ npm run test:e2e
 1. Verify focus visible, no traps
 
 ### Manual screen reader testing (15-20 min)
-1. NVDA + Firefox on critical paths
+1. Narrator on Edge or
+1. NVDA on Chrome
 1. Verify announcements are clear
 
 # Release notes
