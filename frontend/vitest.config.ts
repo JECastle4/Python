@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   test: {
+    setupFiles: ['./src/test-setup.ts'],
     exclude: [
       'tests/e2e/**', // Exclude Playwright E2E tests from Vitest
       'node_modules/**', // Exclude dependencies

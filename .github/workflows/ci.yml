@@ -233,6 +233,9 @@ jobs:
     - name: Type check
       run: npm run type-check
     
+    - name: Accessibility lint
+      run: npm run lint:a11y
+    
     - name: Run tests with coverage
       run: npm run test:coverage -- --run
       # Coverage thresholds enforced by vitest.config.ts:
@@ -307,10 +310,21 @@ jobs:
         npx playwright install --with-deps
         npx playwright install msedge
 
-    - name: Run Playwright E2E tests
-      run: npm run test:e2e
+    - name: Run Playwright E2E tests (Chromium, WebKit, Edge)
+      run: npx playwright test --project=chromium --project=webkit --project=edge
       env:
         CI: true
+
+    - name: Run Playwright E2E tests (Firefox – Mesa software rendering)
+      run: npx playwright test --project=firefox
+      env:
+        CI: true
+        # Force Mesa software rendering so Firefox headless on Linux can use WebGL.
+        # Firefox blocks WebGL when no GPU is present; these env vars tell the Mesa
+        # stack to use llvmpipe (CPU-based) rather than failing.
+        # Scoped to Firefox only so Chromium/WebKit keep their default GPU/SwiftShader behavior.
+        LIBGL_ALWAYS_SOFTWARE: '1'
+        MESA_GL_VERSION_OVERRIDE: '4.5'
 
     - name: Upload Playwright test results
       if: always()

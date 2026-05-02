@@ -14,7 +14,7 @@
       </div>
       <canvas v-if="hasData" ref="canvasRef" class="canvas-panel" />
       <div class="controls-panel">
-      <h2>Sun and Moon Animation from Earth</h2>
+      <h1 class="page-heading">{{ t('app.title') }}</h1>
       
       <div v-if="loading" class="loading">
         <div class="progress-bar-container">
@@ -35,8 +35,9 @@
       
       <div v-if="!hasData" class="input-form">
         <div class="form-group">
-          <label>Latitude:</label>
+          <label for="latitude">Latitude:</label>
           <input 
+            id="latitude"
             v-model.number="params.latitude" 
             type="number" 
               step="0.1"
@@ -51,8 +52,9 @@
         </div>
         
         <div class="form-group">
-          <label>Longitude:</label>
+          <label for="longitude">Longitude:</label>
           <input 
+            id="longitude"
             v-model.number="params.longitude" 
             type="number" 
             step="0.1"
@@ -67,29 +69,30 @@
         </div>
         
         <div class="form-group">
-          <label>Start Date:</label>
-          <input v-model="params.start_date" type="date" />
+          <label for="start-date">Start Date:</label>
+          <input id="start-date" v-model="params.start_date" type="date" />
         </div>
         
         <div class="form-group">
-          <label>Start Time:</label>
-          <input v-model="params.start_time" type="time" step="1" />
+          <label for="start-time">Start Time:</label>
+          <input id="start-time" v-model="params.start_time" type="time" step="1" />
         </div>
         
         <div class="form-group">
-          <label>End Date:</label>
-          <input v-model="params.end_date" type="date" />
+          <label for="end-date">End Date:</label>
+          <input id="end-date" v-model="params.end_date" type="date" />
         </div>
         
       
         <div class="form-group">
-          <label>End Time:</label>
-          <input v-model="params.end_time" type="time" step="1" />
+          <label for="end-time">End Time:</label>
+          <input id="end-time" v-model="params.end_time" type="time" step="1" />
         </div>
         
         <div class="form-group frames-per-day-group">
-          <label>Frames per day:</label>
+          <label for="frames-per-day">Frames per day:</label>
           <input
+            id="frames-per-day"
             v-model.number="framesPerDay"
             type="range"
             min="1"
@@ -100,8 +103,9 @@
         </div>
 
         <div class="form-group">
-          <label>Frame Count:</label>
+          <label for="frame-count">Frame Count:</label>
           <input
+            id="frame-count"
             v-model.number="params.frame_count"
             type="number"
             min="1"
@@ -133,8 +137,8 @@
         <button @click="clearData">New Query</button>
         
         <div class="form-group">
-          <label>Animation Speed:</label>
-          <input v-model.number="animationSpeed" type="range" min="0.1" max="5" step="0.1" />
+          <label for="animation-speed">Animation Speed:</label>
+          <input id="animation-speed" v-model.number="animationSpeed" type="range" min="0.1" max="5" step="0.1" />
           <span>{{ animationSpeed.toFixed(1) }}x</span>
         </div>
         
@@ -155,6 +159,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAstronomyData } from '@/composables/useAstronomyData';
 import { SceneManager } from '@/three/scene';
 import { Sun } from '@/three/objects/Sun';
@@ -164,6 +169,8 @@ import type { ObservationFrame } from '@/types/api.types';
 
 const BaseMap = defineAsyncComponent(() => import('./BaseMap.vue'));
 const DateRangePicker = defineAsyncComponent(() => import('./DateRangePicker.vue'));
+
+const { t } = useI18n();
 
 // Form parameters with defaults
 const today = new Date();
@@ -649,6 +656,13 @@ canvas {
   font-size: 0.9em;
 }
 
+/* Hide the native calendar picker button on the side-panel date inputs.
+   The DateRangePicker on the map panel is the intended date-entry point. */
+.controls-panel input[type="date"]::-webkit-calendar-picker-indicator,
+.controls-panel input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 .form-group input.invalid {
   border-color: #ff4444;
   background: #331111;
@@ -665,7 +679,7 @@ button {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  background: #0066cc;
+  background: #004FA3;
   color: white;
   border: none;
   border-radius: 4px;
@@ -686,7 +700,7 @@ button {
 }
 
 .view-toggle button.active {
-  background: #0066cc;
+  background: #004FA3;
   font-weight: bold;
 }
 
@@ -695,7 +709,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #0052a3;
+  background: #003d82;
 }
 
 button:disabled {
@@ -724,6 +738,13 @@ button:disabled {
   width: 100%;
   display: flex;
   justify-content: flex-start;
+}
+
+.page-heading {
+  margin: 0 0 12px 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .date-range-panel {
@@ -779,7 +800,7 @@ button {
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  background: #0066cc;
+  background: #004FA3;
   color: white;
   border: none;
   border-radius: 4px;

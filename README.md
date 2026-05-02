@@ -14,11 +14,35 @@ uvicorn api.main:app --reload --port 8000
 $env:PYTHONPATH="." ; pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
 ## FE
 cd frontend
+npm run build
+npm run lint:a11y
 npm run type-check
 npm run test:coverage
 npm run test:e2e
 
+# Accessibility
 
+## Development Phase
+### axe DevTools extension (browser manual)
+1. Quick spot-checks during dev
+1. Catch obvious contrast/ARIA/semantic issues
+
+## CI Gate (every PR)
+### eslint-plugin-vuejs-accessibility + jest-axe
+1. Automated baseline: accessibility linting plus axe-based test coverage for labels, ARIA, and semantics
+1. Prevent regressions
+
+## Release Gate (before shipping)
+### Manual keyboard testing (15-20 min)
+1. Tab through entire UI, both states
+1. Verify focus visible, no traps
+
+### Manual screen reader testing (15-20 min)
+1. Narrator on Edge or
+1. NVDA on Chrome
+1. Verify announcements are clear
+
+# Release notes
 Day 1
 HelloWorld
 Julian Date + Day of the Week

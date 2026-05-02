@@ -1,5 +1,17 @@
 <template>
-  <div ref="mapContainer" class="ol-map"></div>
+  <div class="ol-map-wrapper">
+    <span id="map-desc" class="sr-only">
+      Interactive map. Use the zoom controls or scroll to zoom. Click to place a pin when the pin tool is active.
+    </span>
+    <div
+      ref="mapContainer"
+      class="ol-map"
+      role="application"
+      aria-label="Interactive map"
+      aria-describedby="map-desc"
+      tabindex="0"
+    ></div>
+  </div>
 </template>
 
 <script setup>
@@ -68,16 +80,16 @@ onMounted(() => {
     }),
     controls: [
       new Zoom(),
-      new Attribution({
-        collapsible: false,
-        className: 'ol-attribution bottom-left',
-      }),
       ...(props.enablePinTool ? [createPinToolControl(() => {
         pinMode = !pinMode
         // Optionally highlight button when active
         const img = document.querySelector('.map-pin-image')
         if (img)img.src = pinMode ? '/map-pin-selected.png' : '/map-pin.png'
-      })] : [])
+      })] : []),
+      new Attribution({
+        collapsible: false,
+        className: 'ol-attribution bottom-left',
+      }),
     ],
   })
 
@@ -127,7 +139,7 @@ onBeforeUnmount(() => {
 .ol-pin-tool {
   position: absolute;
   left: 8px;
-  top: 60px;
+  top: 72px;
   z-index: 1001;
   display: flex;
   flex-direction: column;
@@ -146,7 +158,7 @@ onBeforeUnmount(() => {
   :global(.ol-pin-tool) {
     position: absolute;
     left: 8px;
-    top: 60px;
+    top: 72px;
     z-index: 1001;
     display: flex;
     flex-direction: column;
@@ -169,5 +181,30 @@ onBeforeUnmount(() => {
   opacity: 1 !important;
   visibility: visible !important;
   z-index: 1000 !important;
+}
+
+/* Ensure zoom buttons meet WCAG 2.5.8 touch target minimum (24×24px) */
+:deep(.ol-zoom-in),
+:deep(.ol-zoom-out) {
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 16px !important;
+}
+
+:deep(.ol-zoom-out) {
+  margin-top: 4px !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

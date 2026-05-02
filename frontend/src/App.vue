@@ -1,9 +1,16 @@
 <template>
-  <AstronomyScene />
+  <main>
+    <AstronomyScene />
+  </main>
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AstronomyScene from '@/components/AstronomyScene.vue';
+
+const { t } = useI18n();
+onMounted(() => { document.title = t('app.title'); });
 </script>
 
 <style>
@@ -13,7 +20,7 @@ import AstronomyScene from '@/components/AstronomyScene.vue';
   box-sizing: border-box;
 }
 
-html, body, #app {
+html, body, #app, main {
   width: 100%;
   height: 100%;
   margin: 0;
