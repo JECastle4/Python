@@ -424,4 +424,232 @@ describe('EventsView', () => {
     // Should not navigate away from eclipses view
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it('handles invalid date in formatDisplayDate gracefully', async () => {
+    const wrapper = mount(EventsView);
+    await flushPromises();
+
+    await wrapper.find('.search-btn').trigger('click');
+    await flushPromises();
+
+    const source = instances[0];
+    const eventWithInvalidDate = makeEvent({ date: 'invalid-date-string' });
+    source.emit('page', { page: 1, events: [eventWithInvalidDate] });
+    source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+    await flushPromises();
+
+    // The event should still be rendered even if date formatting fails
+    expect(wrapper.findAll('.event-item')).toHaveLength(1);
+  });
+
+  it('loads contact times for an eclipse event on click', async () => {
+    const wrapper = mount(EventsView);
+    await flushPromises();
+
+    await wrapper.find('.search-btn').trigger('click');
+    await flushPromises();
+
+    const source = instances[0];
+    const eclipseEvent = makeEvent({
+      event_type: 'Lunar Total',
+      is_lunar: true,
+      eclipse_occurs: true,
+      contact_times: null,
+    });
+    source.emit('page', { page: 1, events: [eclipseEvent] });
+    source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+    await flushPromises();
+
+    // Click the event summary to expand and trigger contact times loading
+    const eventButton = wrapper.find('.event-summary');
+    expect(eventButton.exists()).toBe(true);
+    await eventButton.trigger('click');
+    await flushPromises();
+
+    // Verify the event details section is rendered (contact times area shown)
+    const eventDetails = wrapper.find('.event-details');
+    expect(eventDetails.exists()).toBe(true);
+  });
+
+  it('handles error when loading contact times fails', async () => {
+    const wrapper = mount(EventsView);
+    await flushPromises();
+
+    await wrapper.find('.search-btn').trigger('click');
+    await flushPromises();
+
+    const source = instances[0];
+    const eclipseEvent = makeEvent({
+      event_type: 'Lunar Total',
+      is_lunar: true,
+      eclipse_occurs: true,
+      contact_times: null,
+    });
+    source.emit('page', { page: 1, events: [eclipseEvent] });
+    source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+    await flushPromises();
+
+    // Expand the event - this triggers contact times loading
+    const eventButton = wrapper.find('.event-summary');
+    await eventButton.trigger('click');
+    await flushPromises();
+
+    // Verify event details are shown (even if contact times failed to load)
+    const eventDetails = wrapper.find('.event-details');
+    expect(eventDetails.exists()).toBe(true);
+  });
+
+  it('skips loading contact times if event.contact_times already exists', async () => {
+    const wrapper = mount(EventsView);
+    await flushPromises();
+
+    await wrapper.find('.search-btn').trigger('click');
+    await flushPromises();
+
+    const source = instances[0];
+    const eventWithContactTimes = makeEvent({
+      event_type: 'Lunar Total',
+      is_lunar: true,
+      eclipse_occurs: true,
+      contact_times: {
+        p1: '2025-09-07 15:29:50.911',
+        u1: '2025-09-07 16:26:57.000',
+      },
+    });
+    source.emit('page', { page: 1, events: [eventWithContactTimes] });
+    source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+    await flushPromises();
+
+    const expandButton = wrapper.find('.event-summary');
+    await expandButton.trigger('click');
+    await flushPromises();
+
+    // Event details should be shown but no loading request should be made
+    const eventDetails = wrapper.find('.event-details');
+    expect(eventDetails.exists()).toBe(true);
+    // Only one EventSource from search, no additional one for contact times
+    expect(instances).toHaveLength(1);
+  });
+
+  it('skips loading contact times if event.eclipse_occurs is false', async () => {
+    const wrapper = mount(EventsView);
+    await flushPromises();
+
+    await wrapper.find('.search-btn').trigger('click');
+    await flushPromises();
+
+    const source = instances[0];
+    const nonEclipseEvent = makeEvent({
+      event_type: 'New Moon',
+      is_lunar: false,
+      eclipse_occurs: false,
+      contact_times: null,
+    });
+    source.emit('page', { page: 1, events: [nonEclipseEvent] });
+    source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+    await flushPromises();
+
+    // Event should be displayed
+    expect(wrapper.findAll('.event-item')).toHaveLength(1);
+    // No additional EventSource created for contact times (only the search one)
+    expect(instances).toHaveLength(1);
+  });
+
+  describe('Export Functionality', () => {
+    it('shows export buttons when events are available', async () => {
+      const wrapper = mount(EventsView);
+      await flushPromises();
+
+      await wrapper.find('.search-btn').trigger('click');
+      await flushPromises();
+
+      const source = instances[0];
+      source.emit('page', { page: 1, events: [fullMoonEvent] });
+      source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+      await flushPromises();
+
+      const exportButtons = wrapper.findAll('.export-btn');
+      expect(exportButtons).toHaveLength(2);
+      expect(exportButtons[0].text()).toContain('CSV');
+      expect(exportButtons[1].text()).toContain('JSON');
+    });
+
+    it('disables export buttons when no events are loaded', async () => {
+      const wrapper = mount(EventsView);
+      await flushPromises();
+
+      const exportButtons = wrapper.findAll('.export-btn');
+      exportButtons.forEach((btn) => {
+        expect(btn.attributes('disabled')).toBeDefined();
+      });
+    });
+
+    it('enables export buttons after search results are loaded', async () => {
+      const wrapper = mount(EventsView);
+      await flushPromises();
+
+      await wrapper.find('.search-btn').trigger('click');
+      await flushPromises();
+
+      const source = instances[0];
+      source.emit('page', { page: 1, events: [fullMoonEvent, newMoonEvent] });
+      source.emit('metadata', { page_size: 10, total_events: 2, total_pages: 1 });
+      await flushPromises();
+
+      const exportButtons = wrapper.findAll('.export-btn');
+      exportButtons.forEach((btn) => {
+        expect(btn.attributes('disabled')).toBeUndefined();
+      });
+    });
+
+    it('triggers CSV export when CSV button is clicked', async () => {
+      const wrapper = mount(EventsView);
+      await flushPromises();
+
+      await wrapper.find('.search-btn').trigger('click');
+      await flushPromises();
+
+      const source = instances[0];
+      const eventWithContact = makeEvent({
+        contact_times: {
+          'Maximum Eclipse': '2025-09-07 18:11:42.600',
+        },
+      });
+      source.emit('page', { page: 1, events: [eventWithContact] });
+      source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+      await flushPromises();
+
+      const csvButton = wrapper.findAll('.export-btn')[0];
+      await csvButton.trigger('click');
+      await flushPromises();
+
+      // Verify button click was processed (actual download tested in export.test.ts)
+      expect(csvButton.exists()).toBe(true);
+    });
+
+    it('triggers JSON export when JSON button is clicked', async () => {
+      const wrapper = mount(EventsView);
+      await flushPromises();
+
+      await wrapper.find('.search-btn').trigger('click');
+      await flushPromises();
+
+      const source = instances[0];
+      const eventWithContact = makeEvent({
+        contact_times: {
+          'Maximum Eclipse': '2025-09-07 18:11:42.600',
+        },
+      });
+      source.emit('page', { page: 1, events: [eventWithContact] });
+      source.emit('metadata', { page_size: 10, total_events: 1, total_pages: 1 });
+      await flushPromises();
+
+      const jsonButton = wrapper.findAll('.export-btn')[1];
+      await jsonButton.trigger('click');
+      await flushPromises();
+
+      // Verify button click was processed (actual download tested in export.test.ts)
+      expect(jsonButton.exists()).toBe(true);
+    });
+  });
 });

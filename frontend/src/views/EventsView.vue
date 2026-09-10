@@ -58,7 +58,31 @@
 
       <template v-if="!loading && !error">
         <div v-if="events.length" class="events-table-header">
-          <p class="utc-notice">{{ t('events.allTimesLocal') }}</p>
+          <div class="header-row">
+            <p class="utc-notice">{{ t('events.allTimesLocal') }}</p>
+            <div class="export-controls">
+              <button
+                type="button"
+                class="export-btn"
+                :title="t('buttons.downloadAsCSV') || 'Download as CSV'"
+                @click="handleExport('csv')"
+                :disabled="!events.length"
+              >
+                <i class="fa fa-download" aria-hidden="true"></i>
+                CSV
+              </button>
+              <button
+                type="button"
+                class="export-btn"
+                :title="t('buttons.downloadAsJSON') || 'Download as JSON'"
+                @click="handleExport('json')"
+                :disabled="!events.length"
+              >
+                <i class="fa fa-download" aria-hidden="true"></i>
+                JSON
+              </button>
+            </div>
+          </div>
         </div>
         <ul v-if="events.length" class="event-list">
           <EventListItem
@@ -67,9 +91,21 @@
             :date="ev.date"
             :eventType="ev.event_type"
             :eclipseOccurs="ev.eclipse_occurs"
+            :event="ev"
+            @load-contact-times="loadContactTimesForEvent"
           >
-            <LunarEclipseDetails v-if="ev.is_lunar" :event="ev" />
-            <SolarEclipseDetails v-else :event="ev" />
+            <LunarEclipseDetails 
+              v-if="ev.is_lunar" 
+              :event="ev"
+              :loading="loadingEventDates.has(ev.date)"
+              :error="contactTimesErrors[ev.date] || null"
+            />
+            <SolarEclipseDetails 
+              v-else 
+              :event="ev"
+              :loading="loadingEventDates.has(ev.date)"
+              :error="contactTimesErrors[ev.date] || null"
+            />
           </EventListItem>
         </ul>
         <p v-else-if="hasSearched" class="empty-state">{{ t('events.noResults') }}</p>
@@ -104,6 +140,7 @@ import { ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAstronomicalEvents } from '@/composables/useAstronomicalEvents';
+import { exportContactTimesToCSV, exportContactTimesToJSON, generateFilename } from '@/services/export';
 import AppHeader from '@/components/Header.vue';
 import AppFooter from '@/components/Footer.vue';
 import EventListItem from '@/components/events/EventListItem.vue';
@@ -114,9 +151,11 @@ const DateRangePicker = defineAsyncComponent(() => import('@/components/DateRang
 
 const { t, locale } = useI18n();
 const router = useRouter();
-const { events, pagination, loading, error, hasSearched, fetchEventsSSE, cancelSSE, goToPage, sseEventCount } = useAstronomicalEvents();
+const { events, pagination, loading, error, hasSearched, fetchEventsSSE, cancelSSE, goToPage, sseEventCount, fetchContactTimesForEvent } = useAstronomicalEvents();
 
 const PAGE_SIZE = 10;
+const loadingEventDates = ref<Set<string>>(new Set());
+const contactTimesErrors = ref<Record<string, string>>({});
 
 const today = new Date();
 const oneYearFromToday = new Date(today);
@@ -153,9 +192,52 @@ function search() {
     start_date: startDate.value,
     end_date: endDate.value,
     page_size: PAGE_SIZE,
+    include_contact_times: false,  // Load contact times on-demand, not upfront
   }).catch(() => {
     // Composable updates error state; rejection handled here to prevent unhandled rejection.
   });
+}
+
+async function loadContactTimesForEvent(event: any) {
+  // Only fetch if it's an eclipse and we don't already have contact times
+  if (!event.eclipse_occurs || event.contact_times) {
+    return;
+  }
+
+  const dateStr = event.date;
+  
+  try {
+    loadingEventDates.value = new Set(loadingEventDates.value).add(dateStr);
+    delete contactTimesErrors.value[dateStr];
+    
+    await fetchContactTimesForEvent(dateStr, event.is_lunar);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to load contact times';
+    contactTimesErrors.value[dateStr] = errorMsg;
+  } finally {
+    const newSet = new Set(loadingEventDates.value);
+    newSet.delete(dateStr);
+    loadingEventDates.value = newSet;
+  }
+}
+
+function handleExport(format: 'csv' | 'json') {
+  if (!events.value || events.value.length === 0) {
+    return;
+  }
+
+  const filename = generateFilename(format);
+
+  try {
+    if (format === 'csv') {
+      exportContactTimesToCSV(events.value, filename);
+    } else {
+      exportContactTimesToJSON(events.value, filename);
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Export failed';
+    console.error('Export error:', errorMsg);
+  }
 }
 </script>
 
@@ -312,11 +394,25 @@ function search() {
   margin-bottom: 1rem;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
 .utc-notice {
   color: #d4d4d4;
   font-size: 0.9em;
   margin: 0;
   padding: 0;
+  flex: 1;
+}
+
+.export-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .event-list {
@@ -349,5 +445,29 @@ function search() {
 
 .pagination-info {
   color: #ccc;
+}
+
+.export-btn {
+  padding: 0.5rem 1rem;
+  background: #004FA3;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  white-space: nowrap;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #003d82;
+}
+
+.export-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 </style>

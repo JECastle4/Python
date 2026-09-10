@@ -60,7 +60,9 @@
 		"apply": "Apply",
 		"cancel": "Cancel",
 		"selectBody": "Select {body} to view details",
-		"zoomToBody": "Zoom to {body}"
+		"zoomToBody": "Zoom to {body}",
+		"downloadAsCSV": "Download eclipse contact times as CSV",
+		"downloadAsJSON": "Download eclipse contact times as JSON"
 	},
 	"views": {
 		"solar3d": "Solar System View",
@@ -216,6 +218,7 @@
 		"eventsReceived": "({count} received so far)",
 		"noResults": "No events found in the selected date range.",
 		"allTimesLocal": "All times are in your local time zone",
+		"loadingContactTimes": "Loading contact times...",
 		"pageOf": "Page {page} of {total}",
 		"searchParameters": "Search Parameters",
 		"resultsFound": "Results Found",
